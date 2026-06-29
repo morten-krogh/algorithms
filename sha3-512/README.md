@@ -87,10 +87,10 @@ Serve the two `lib/` files as static files, making sure the `.wasm` is served wi
 
 ```html
 <script type="module">
-	import { Sha3_512 } from "./lib/sha3-512.js";
-	const sha3 = await new Sha3_512().initialize(
-		new URL("./lib/sha3-512.wasm", import.meta.url),
-	);
+	import { Sha3_512 } from "./sha3-512.js";
+	// The URL where your server serves the wasm file.
+	const url = "/sha3-512.wasm";
+	const sha3 = await new Sha3_512().initialize(url);
 	const digest = sha3.update(new TextEncoder().encode("abc")).digest();
 	document.body.textContent = Array.from(digest, (b) =>
 		b.toString(16).padStart(2, "0"),
