@@ -1,7 +1,7 @@
 {
 	"include": ["./**/*.js"],
 	"compilerOptions": {
-		"typeRoots": ["./node_modules/@types"],
+		"types": ["node"],
 		"target": "ESNEXT",
 		"module": "nodenext",
 		"moduleResolution": "nodenext",

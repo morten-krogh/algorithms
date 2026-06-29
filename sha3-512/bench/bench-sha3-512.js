@@ -2,7 +2,7 @@
 
 import { readFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
-import { Sha3_512 } from "./sha3_512.js";
+import { Sha3_512 } from "../src/sha3_512.js";
 
 const MESSAGE_BYTE = 0xa3;
 const MIB = 1024 * 1024;
@@ -133,7 +133,7 @@ function parse_args(args) {
  */
 async function run_bench(options) {
 	const wasm_bytes = await readFile(
-		new URL("./sha3_512.wasm", import.meta.url),
+		new URL("../lib/sha3_512.wasm", import.meta.url),
 	);
 	const wasm_module = await WebAssembly.compile(wasm_bytes);
 	const sha3 = await new Sha3_512().initialize(wasm_module);

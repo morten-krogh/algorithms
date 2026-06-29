@@ -4,7 +4,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const BENCH_PATH = fileURLToPath(
-	new URL("./bench-sha3-512.js", import.meta.url),
+	new URL("../bench/bench-sha3-512.js", import.meta.url),
 );
 const SHA3_512_A3X4 =
 	"c05d20aecc937fb4468311dea1bfdbbbcab84eda55785aaefc82e01393cc24466" +
