@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>SHA3-512 (WASM) demo</title>
+		<style>
+			:root {
+				color-scheme: light dark;
+			}
+			body {
+				font-family: system-ui, sans-serif;
+				max-width: 48rem;
+				margin: 2rem auto;
+				padding: 0 1rem;
+				line-height: 1.5;
+			}
+			h1 {
+				font-size: 1.25rem;
+			}
+			label {
+				display: block;
+				font-weight: 600;
+				margin: 1rem 0 0.25rem;
+			}
+			textarea {
+				width: 100%;
+				min-height: 8rem;
+				font: inherit;
+				padding: 0.5rem;
+				box-sizing: border-box;
+			}
+			#output {
+				padding: 0.75rem;
+				border: 1px solid currentColor;
+				border-radius: 0.375rem;
+				font-family: ui-monospace, monospace;
+				word-break: break-all;
+				user-select: all;
+				min-height: 1.2em;
+			}
+			.meta {
+				color: gray;
+				font-size: 0.875rem;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>SHA3-512 in the browser (WebAssembly)</h1>
+		<p class="meta">
+			Type below — the SHA3-512 hash is recomputed on every change using
+			<code>lib/sha3-512.js</code> + <code>lib/sha3-512.wasm</code>.
+		</p>
+
+		<label for="input">Input</label>
+		<textarea id="input" placeholder="Type something…"></textarea>
+
+		<label for="output">SHA3-512 (hex)</label>
+		<div id="output" aria-live="polite"></div>
+
+		<script type="module">
+			import { Sha3_512 } from "../lib/sha3-512.js";
+
+			// Pass the wasm URL straight to initialize(): it fetches and uses
+			// WebAssembly.instantiateStreaming, which needs the server to send the
+			// wasm with the "application/wasm" MIME type.
+			const sha3 = await new Sha3_512().initialize(
+				new URL("../lib/sha3-512.wasm", import.meta.url),
+			);
+
+			const encoder = new TextEncoder();
+			const input = document.querySelector("#input");
+			const output = document.querySelector("#output");
+
+			const hexFromBytes = (bytes) =>
+				Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+
+			function render() {
+				// reset() clears state so we can reuse the single instance per input.
+				const digest = sha3.reset().update(encoder.encode(input.value)).digest();
+				output.textContent = hexFromBytes(digest);
+			}
+
+			input.addEventListener("input", render);
+			render(); // show the hash of the initial (empty) input
+		</script>
+	</body>
+</html>

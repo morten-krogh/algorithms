@@ -14,6 +14,7 @@
 	},
 	"scripts": {
 		"build": "wat2wasm src/sha3-512.wat -o lib/sha3-512.wasm && cp src/sha3-512.js lib/sha3-512.js",
+		"server": "http-server -p 9876 -c-1 -o /html/sha3-512.html",
 		"tsgo": "tsgo -p tsconfig.json",
 		"biome": "biome check",
 		"test": "node --test"
@@ -22,6 +23,7 @@
 		"@biomejs/biome": "^2.5.1",
 		"@types/node": "24.10.2",
 		"@typescript/native-preview": "^7.0.0-dev.20260629.1",
+		"http-server": "^14.1.1",
 		"wabt": "^1.0.39"
 	}
 }
