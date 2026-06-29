@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { Sha3_512 } from "../lib/sha3-512.js";
@@ -24,29 +25,18 @@ const RUNS = [
 	{ size: 10485760, iterations: 30 },
 ];
 
-/**
- * Table columns. The numeric columns are right-justified to a fixed width; the
- * trailing `digest` column holds the full 128-char hex hash, so it is left
- * unpadded.
- */
+/** Right-justified columns for the comparison table. */
 const COLUMNS = [
 	{ header: "size(B)", width: 9 },
-	{ header: "iters", width: 9 },
-	{ header: "total(ms)", width: 12 },
-	{ header: "hashes/s", width: 14 },
-	{ header: "MiB/s", width: 10 },
-	{ header: "digest", width: 0 },
+	{ header: "iters", width: 8 },
+	{ header: "wasm(ms)", width: 10 },
+	{ header: "wasm h/s", width: 10 },
+	{ header: "wasm MiB/s", width: 11 },
+	{ header: "node(ms)", width: 10 },
+	{ header: "node h/s", width: 11 },
+	{ header: "node MiB/s", width: 11 },
+	{ header: "speedup", width: 8 },
 ];
-
-/**
- * @param {Uint8Array} bytes
- * @returns {string}
- */
-function hex_from_bytes(bytes) {
-	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
-		"",
-	);
-}
 
 /**
  * @param {readonly string[]} cells
@@ -59,35 +49,82 @@ function format_row(cells) {
 }
 
 /**
+ * Times `iterations` calls to `hash_once`, after a warmup of the same shape.
+ *
+ * @param {() => unknown} hash_once
+ * @param {number} iterations
+ * @returns {number} elapsed milliseconds (floored at Number.EPSILON)
+ */
+function time_iterations(hash_once, iterations) {
+	const warmup = Math.min(1000, iterations);
+	for (let iteration = 0; iteration < warmup; iteration++) {
+		hash_once();
+	}
+
+	const start = performance.now();
+	for (let iteration = 0; iteration < iterations; iteration++) {
+		hash_once();
+	}
+	const elapsed_ms = performance.now() - start;
+	return elapsed_ms === 0 ? Number.EPSILON : elapsed_ms;
+}
+
+/**
+ * Throughput metrics for a single (implementation, run) pair.
+ *
+ * @param {number} elapsed_ms
+ * @param {{ size: number, iterations: number }} run
+ * @returns {{ ms: string, hashes: string, mib: string, ms_value: number }}
+ */
+function metrics(elapsed_ms, run) {
+	const seconds = elapsed_ms / 1000;
+	const total_mib = (run.size * run.iterations) / MIB;
+	return {
+		ms: elapsed_ms.toFixed(2),
+		hashes: (run.iterations / seconds).toFixed(0),
+		mib: (total_mib / seconds).toFixed(2),
+		ms_value: elapsed_ms,
+	};
+}
+
+/**
  * @param {Sha3_512} sha3
  * @param {{ size: number, iterations: number }} run
  * @returns {string}
  */
 function bench_row(sha3, run) {
 	const message = new Uint8Array(run.size).fill(MESSAGE_BYTE);
-	const warmup = Math.min(1000, run.iterations);
-	for (let iteration = 0; iteration < warmup; iteration++) {
-		sha3.reset().update(message).digest();
+
+	// Sanity check: both implementations must agree before we compare speeds.
+	const wasm_digest = sha3.reset().update(message).digest();
+	const node_digest = createHash("sha3-512").update(message).digest();
+	if (!Buffer.from(wasm_digest).equals(node_digest)) {
+		console.error(`digest mismatch at size ${run.size}`);
+		process.exit(1);
 	}
 
-	/** @type {Uint8Array} */
-	let digest = new Uint8Array();
-	const start = performance.now();
-	for (let iteration = 0; iteration < run.iterations; iteration++) {
-		digest = sha3.reset().update(message).digest();
-	}
-	const elapsed_ms = performance.now() - start;
-	const total_ms = elapsed_ms === 0 ? Number.EPSILON : elapsed_ms;
-	const total_seconds = total_ms / 1000;
-	const total_mib = (run.size * run.iterations) / MIB;
+	const wasm = metrics(
+		time_iterations(() => sha3.reset().update(message).digest(), run.iterations),
+		run,
+	);
+	const node = metrics(
+		time_iterations(
+			() => createHash("sha3-512").update(message).digest(),
+			run.iterations,
+		),
+		run,
+	);
 
 	return format_row([
 		String(run.size),
 		String(run.iterations),
-		total_ms.toFixed(3),
-		(run.iterations / total_seconds).toFixed(1),
-		(total_mib / total_seconds).toFixed(2),
-		hex_from_bytes(digest),
+		wasm.ms,
+		wasm.hashes,
+		wasm.mib,
+		node.ms,
+		node.hashes,
+		node.mib,
+		`${(wasm.ms_value / node.ms_value).toFixed(1)}x`,
 	]);
 }
 
