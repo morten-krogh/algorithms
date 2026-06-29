@@ -1,0 +1,23 @@
+{
+  "name": "sha3-512",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "sha3-512": "bin/sha3-512.js"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+	"tsgo": "tsgo -p tsconfig.json",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+	"@typescript/native-preview": "^7.0.0-dev.20260629.1",
+	"@types/node": "24.10.2"
+  }
+}
