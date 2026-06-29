@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>SHAKE-256 (WASM) demo</title>
+		<style>
+			:root {
+				color-scheme: light dark;
+			}
+			body {
+				font-family: system-ui, sans-serif;
+				max-width: 48rem;
+				margin: 2rem auto;
+				padding: 0 1rem;
+				line-height: 1.5;
+			}
+			h1 {
+				font-size: 1.25rem;
+			}
+			label {
+				display: block;
+				font-weight: 600;
+				margin: 1rem 0 0.25rem;
+			}
+			textarea {
+				width: 100%;
+				min-height: 8rem;
+				font: inherit;
+				padding: 0.5rem;
+				box-sizing: border-box;
+			}
+			#output {
+				padding: 0.75rem;
+				border: 1px solid currentColor;
+				border-radius: 0.375rem;
+				font-family: ui-monospace, monospace;
+				word-break: break-all;
+				user-select: all;
+				min-height: 1.2em;
+			}
+			.meta {
+				color: gray;
+				font-size: 0.875rem;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>SHAKE-256 in the browser (WebAssembly)</h1>
+		<p class="meta">
+			Type below — the SHAKE-256 hash is recomputed on every change using
+			<code>lib/shake-256.js</code> + <code>lib/shake-256.wasm</code>.
+		</p>
+
+		<label for="input">Input</label>
+		<textarea id="input" placeholder="Type something…"></textarea>
+
+		<label for="length">Output bytes</label>
+		<input id="length" type="number" min="1" value="32" />
+
+		<label for="output">SHAKE-256 (hex)</label>
+		<div id="output" aria-live="polite"></div>
+
+		<script type="module">
+			import { Shake256 } from "../lib/shake-256.js";
+
+			// Pass the wasm URL straight to initialize(): it fetches and uses
+			// WebAssembly.instantiateStreaming, which needs the server to send the
+			// wasm with the "application/wasm" MIME type.
+			const shake = await new Shake256().initialize(
+				new URL("../lib/shake-256.wasm", import.meta.url),
+			);
+
+			const encoder = new TextEncoder();
+			const input = document.querySelector("#input");
+			const length = document.querySelector("#length");
+			const output = document.querySelector("#output");
+
+			const hexFromBytes = (bytes) =>
+				Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+
+			function render() {
+				// SHAKE256 is an XOF: choose how many bytes to squeeze.
+				const outputBytes = Math.max(0, Math.floor(Number(length.value) || 0));
+				// reset() clears state so we can reuse the single instance per input.
+				const digest = shake
+					.reset()
+					.update(encoder.encode(input.value))
+					.digest(outputBytes);
+				output.textContent = hexFromBytes(digest);
+			}
+
+			input.addEventListener("input", render);
+			length.addEventListener("input", render);
+			render(); // show the hash of the initial (empty) input
+		</script>
+	</body>
+</html>

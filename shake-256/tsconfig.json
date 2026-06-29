@@ -1,0 +1,32 @@
+{
+	"include": ["./**/*.js"],
+	"compilerOptions": {
+		"types": ["node"],
+		"target": "ESNEXT",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"strict": true,
+		"noEmit": true,
+		"allowJs": true,
+		"maxNodeModuleJsDepth": 0,
+		"skipLibCheck": true,
+		"checkJs": true,
+		"pretty": false,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true,
+		"strictNullChecks": true,
+		"noImplicitAny": true,
+		"noImplicitThis": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"strictBindCallApply": true,
+		"noPropertyAccessFromIndexSignature": true,
+		"isolatedModules": true,
+		"noUncheckedIndexedAccess": true,
+		"allowUnusedLabels": false,
+		"allowUnreachableCode": false,
+		"exactOptionalPropertyTypes": true,
+		"esModuleInterop": true
+	}
+}
