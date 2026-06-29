@@ -1,0 +1,103 @@
+#!/usr/bin/env node
+
+import { readFile } from "node:fs/promises";
+import { performance } from "node:perf_hooks";
+import { Sha3_512 } from "../lib/sha3-512.js";
+
+const MESSAGE_BYTE = 0xa3;
+const MIB = 1024 * 1024;
+
+/**
+ * Message sizes (in bytes) to benchmark, each with the number of timed
+ * iterations to run. Smaller messages use more iterations so the measured
+ * time stays meaningful.
+ *
+ * @type {ReadonlyArray<{ size: number, iterations: number }>}
+ */
+const RUNS = [
+	{ size: 0, iterations: 200000 },
+	{ size: 64, iterations: 200000 },
+	{ size: 1024, iterations: 50000 },
+	{ size: 16384, iterations: 10000 },
+	{ size: 262144, iterations: 1000 },
+	{ size: 1048576, iterations: 300 },
+	{ size: 10485760, iterations: 30 },
+];
+
+/**
+ * Table columns. The numeric columns are right-justified to a fixed width; the
+ * trailing `digest` column holds the full 128-char hex hash, so it is left
+ * unpadded.
+ */
+const COLUMNS = [
+	{ header: "size(B)", width: 9 },
+	{ header: "iters", width: 9 },
+	{ header: "total(ms)", width: 12 },
+	{ header: "hashes/s", width: 14 },
+	{ header: "MiB/s", width: 10 },
+	{ header: "digest", width: 0 },
+];
+
+/**
+ * @param {Uint8Array} bytes
+ * @returns {string}
+ */
+function hex_from_bytes(bytes) {
+	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+		"",
+	);
+}
+
+/**
+ * @param {readonly string[]} cells
+ * @returns {string}
+ */
+function format_row(cells) {
+	return cells
+		.map((cell, index) => cell.padStart(COLUMNS[index]?.width ?? 0))
+		.join("  ");
+}
+
+/**
+ * @param {Sha3_512} sha3
+ * @param {{ size: number, iterations: number }} run
+ * @returns {string}
+ */
+function bench_row(sha3, run) {
+	const message = new Uint8Array(run.size).fill(MESSAGE_BYTE);
+	const warmup = Math.min(1000, run.iterations);
+	for (let iteration = 0; iteration < warmup; iteration++) {
+		sha3.reset().update(message).digest();
+	}
+
+	/** @type {Uint8Array} */
+	let digest = new Uint8Array();
+	const start = performance.now();
+	for (let iteration = 0; iteration < run.iterations; iteration++) {
+		digest = sha3.reset().update(message).digest();
+	}
+	const elapsed_ms = performance.now() - start;
+	const total_ms = elapsed_ms === 0 ? Number.EPSILON : elapsed_ms;
+	const total_seconds = total_ms / 1000;
+	const total_mib = (run.size * run.iterations) / MIB;
+
+	return format_row([
+		String(run.size),
+		String(run.iterations),
+		total_ms.toFixed(3),
+		(run.iterations / total_seconds).toFixed(1),
+		(total_mib / total_seconds).toFixed(2),
+		hex_from_bytes(digest),
+	]);
+}
+
+const wasm_bytes = await readFile(
+	new URL("../lib/sha3-512.wasm", import.meta.url),
+);
+const wasm_module = await WebAssembly.compile(wasm_bytes);
+const sha3 = await new Sha3_512().initialize(wasm_module);
+
+console.log(format_row(COLUMNS.map((column) => column.header)));
+for (const run of RUNS) {
+	console.log(bench_row(sha3, run));
+}

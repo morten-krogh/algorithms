@@ -7,13 +7,13 @@
 	"type": "module",
 	"main": "index.js",
 	"bin": {
-		"sha3-512": "bin/sha3-512.js"
+		"sha3-512": "bin/sha3-512"
 	},
 	"directories": {
 		"test": "test"
 	},
 	"scripts": {
-		"build": "wat2wasm src/sha3_512.wat -o lib/sha3_512.wasm && cp src/sha3_512.js lib/sha3_512.js",
+		"build": "wat2wasm src/sha3-512.wat -o lib/sha3-512.wasm && cp src/sha3-512.js lib/sha3-512.js",
 		"tsgo": "tsgo -p tsconfig.json",
 		"biome": "biome check",
 		"test": "node --test"

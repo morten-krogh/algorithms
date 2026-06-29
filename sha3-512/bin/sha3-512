@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile } from "node:fs/promises";
-import { Sha3_512 } from "../lib/sha3_512.js";
+import { Sha3_512 } from "../lib/sha3-512.js";
 
 /**
  * @param {Uint8Array} bytes
@@ -20,7 +20,7 @@ if (message === undefined || rest.length > 0) {
 }
 
 const wasm_bytes = await readFile(
-	new URL("../lib/sha3_512.wasm", import.meta.url),
+	new URL("../lib/sha3-512.wasm", import.meta.url),
 );
 const wasm_module = await WebAssembly.compile(wasm_bytes);
 const sha3 = await new Sha3_512().initialize(wasm_module);
