@@ -41,6 +41,9 @@ native `node:crypto` SHA3-512 across a range of message sizes.
 
 `sha3-512.html` — a self-contained browser demo: type into a textarea and see the digest update live.
 
+`npm run server` starts a static server (port 9876) and opens the bundled demo at
+`/html/sha3-512.html`.
+
 ## test
 
 The test suites, run with `node --test`:
@@ -85,21 +88,18 @@ other than a `WebAssembly.Module` it uses `WebAssembly.instantiateStreaming(fetc
 Serve the two `lib/` files as static files, making sure the `.wasm` is served with the MIME type
 `application/wasm`. Import `sha3-512.js` as an ES module and pass the wasm URL to `initialize()`:
 
-```html
-<script type="module">
-	import { Sha3_512 } from "./sha3-512.js";
-	// The URL where your server serves the wasm file.
-	const url = "/sha3-512.wasm";
-	const sha3 = await new Sha3_512().initialize(url);
-	const digest = sha3.update(new TextEncoder().encode("abc")).digest();
-	document.body.textContent = Array.from(digest, (b) =>
-		b.toString(16).padStart(2, "0"),
-	).join("");
-</script>
-```
+```js
+import { Sha3_512 } from "./sha3-512.js";
 
-`npm run server` starts a static server (port 9876) and opens the bundled demo at
-`/html/sha3-512.html`.
+// The URL where your server serves the wasm file.
+const url = "/sha3-512.wasm";
+const sha3 = await new Sha3_512().initialize(url);
+
+const digest = sha3.update(new TextEncoder().encode("abc")).digest();
+console.log(
+	Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join(""),
+);
+```
 
 ## Command line
 
