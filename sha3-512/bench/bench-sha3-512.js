@@ -2,7 +2,7 @@
 
 import { readFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
-import { Sha3_512 } from "../src/sha3_512.js";
+import { Sha3_512 } from "../lib/sha3_512.js";
 
 const MESSAGE_BYTE = 0xa3;
 const MIB = 1024 * 1024;

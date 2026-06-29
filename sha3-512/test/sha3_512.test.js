@@ -6,7 +6,9 @@ import { Sha3_512 } from "../src/sha3_512.js";
 
 const text_encoder = new TextEncoder();
 
-const wasm_bytes = await readFile(new URL("../lib/sha3_512.wasm", import.meta.url));
+const wasm_bytes = await readFile(
+	new URL("../lib/sha3_512.wasm", import.meta.url),
+);
 const wasm_url = `data:application/wasm;base64,${Buffer.from(
 	wasm_bytes,
 ).toString("base64")}`;

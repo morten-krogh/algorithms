@@ -7,7 +7,9 @@ const STATE_BYTES = 200;
 const DIGEST_BYTES = 64;
 const MEMORY_BYTES = 1024 * 1024;
 
-const wasm_bytes = await readFile(new URL("../lib/sha3_512.wasm", import.meta.url));
+const wasm_bytes = await readFile(
+	new URL("../lib/sha3_512.wasm", import.meta.url),
+);
 const sha3_512_wasm_module = await WebAssembly.compile(wasm_bytes);
 
 /**
