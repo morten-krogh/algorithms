@@ -44,9 +44,7 @@ function hex_from_bytes(bytes) {
  * @returns {string}
  */
 function oracle_hex(input, outputLength) {
-	return createHash("shake256", { outputLength })
-		.update(input)
-		.digest("hex");
+	return createHash("shake256", { outputLength }).update(input).digest("hex");
 }
 
 test("shake-256.js has no Node-only imports or Buffer dependency", async (_t) => {
@@ -94,7 +92,9 @@ test("Shake256 matches gold known-answer vectors (64-byte output)", (_t) => {
 		SHAKE256_ABC_64,
 	);
 	assert.equal(
-		hex_from_bytes(shake.reset().update(new Uint8Array(200).fill(0xa3)).digest(64)),
+		hex_from_bytes(
+			shake.reset().update(new Uint8Array(200).fill(0xa3)).digest(64),
+		),
 		SHAKE256_A3_200_64,
 	);
 });
@@ -131,8 +131,14 @@ test("digest returns a fresh Uint8Array (not a Buffer)", (_t) => {
 
 test("reset reuses the instance for a new message", (_t) => {
 	const abc = text_encoder.encode("abc");
-	assert.equal(hex_from_bytes(shake.reset().update(abc).digest(64)), SHAKE256_ABC_64);
-	assert.equal(hex_from_bytes(shake.reset().update(abc).digest(64)), SHAKE256_ABC_64);
+	assert.equal(
+		hex_from_bytes(shake.reset().update(abc).digest(64)),
+		SHAKE256_ABC_64,
+	);
+	assert.equal(
+		hex_from_bytes(shake.reset().update(abc).digest(64)),
+		SHAKE256_ABC_64,
+	);
 });
 
 test("multi-block squeeze matches the reference (>1 rate block)", (_t) => {
@@ -166,10 +172,16 @@ test("getState/setState fork a shared prefix sequentially", (_t) => {
 	const hash = shake.reset().update(a);
 	const snapshot = hash.getState();
 
-	assert.equal(hex_from_bytes(hash.update(b).digest(64)), oracle_hex(text_encoder.encode("ab"), 64));
+	assert.equal(
+		hex_from_bytes(hash.update(b).digest(64)),
+		oracle_hex(text_encoder.encode("ab"), 64),
+	);
 
 	hash.setState(snapshot);
-	assert.equal(hex_from_bytes(hash.update(c).digest(64)), oracle_hex(text_encoder.encode("ac"), 64));
+	assert.equal(
+		hex_from_bytes(hash.update(c).digest(64)),
+		oracle_hex(text_encoder.encode("ac"), 64),
+	);
 });
 
 test("getState snapshot is portable to another instance across a block boundary", async (_t) => {
@@ -190,10 +202,7 @@ test("getState snapshot is portable to another instance across a block boundary"
 
 test("setState rejects malformed snapshots", (_t) => {
 	assert.throws(() => shake.setState(new Uint8Array(8)), TypeError);
-	assert.throws(
-		() => shake.setState(/** @type {never} */ ("nope")),
-		TypeError,
-	);
+	assert.throws(() => shake.setState(/** @type {never} */ ("nope")), TypeError);
 	const bad = new Uint8Array(400); // 200 state + 1 length + 199 pending
 	bad[200] = 199; // pendingLength >= RATE_BYTES
 	assert.throws(() => shake.setState(bad), /Invalid SHAKE-256 state/);

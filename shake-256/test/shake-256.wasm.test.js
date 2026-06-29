@@ -88,7 +88,11 @@ test("SHAKE256 WASM memory is at least 1MiB", async (_t) => {
 
 test("SHAKE256 WASM only exports absorb, squeeze and memory", async (_t) => {
 	const exports = await instantiate_shake256();
-	assert.deepEqual(Object.keys(exports).sort(), ["absorb", "memory", "squeeze"]);
+	assert.deepEqual(Object.keys(exports).sort(), [
+		"absorb",
+		"memory",
+		"squeeze",
+	]);
 });
 
 test("SHAKE256 WASM empty input, first 64 output bytes", async (_t) => {

@@ -31,5 +31,7 @@ const wasm_bytes = await readFile(
 );
 const wasm_module = await WebAssembly.compile(wasm_bytes);
 const shake = await new Shake256().initialize(wasm_module);
-const digest = shake.update(new TextEncoder().encode(message)).digest(outputBytes);
+const digest = shake
+	.update(new TextEncoder().encode(message))
+	.digest(outputBytes);
 console.log(hex_from_bytes(digest));
