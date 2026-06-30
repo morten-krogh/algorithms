@@ -75,9 +75,12 @@ const wasm = await WebAssembly.compile(
 );
 const sha3 = await new Sha3_512().initialize(wasm);
 
-const digest = sha3.update(new TextEncoder().encode("abc")).digest();
-console.log(Buffer.from(digest).toString("hex"));
-// b751850b1a57168a5693cd924b6b096e08f621827444f70d884f5d0240d2712e10e116e9192af3c91a7ec57647e3934057340b4cf408d5a56592f8274eec53f0
+// update() can be called repeatedly to hash data incrementally.
+sha3.update(new Uint8Array([1, 2, 3]));
+sha3.update(new Uint8Array([4, 5]));
+const digest = sha3.digest();
+
+console.log(digest);
 ```
 
 `initialize()` also accepts a URL/`Request`/string (including a `data:` URL); when given anything
@@ -95,10 +98,12 @@ import { Sha3_512 } from "./sha3-512.js";
 const url = "/sha3-512.wasm";
 const sha3 = await new Sha3_512().initialize(url);
 
-const digest = sha3.update(new TextEncoder().encode("abc")).digest();
-console.log(
-	Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join(""),
-);
+// update() can be called repeatedly to hash data incrementally.
+sha3.update(new Uint8Array([1, 2, 3]));
+sha3.update(new Uint8Array([4, 5]));
+const digest = sha3.digest();
+
+console.log(digest);
 ```
 
 ## Command line

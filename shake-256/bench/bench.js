@@ -38,7 +38,7 @@ const COLUMNS = [
 	{ header: "node(ms)", width: 10 },
 	{ header: "node h/s", width: 11 },
 	{ header: "node MiB/s", width: 11 },
-	{ header: "speedup", width: 8 },
+	{ header: "wasm/node performance", width: 21 },
 ];
 
 /**
@@ -135,7 +135,7 @@ function bench_row(shake, run) {
 		node.ms,
 		node.hashes,
 		node.mib,
-		`${(wasm.ms_value / node.ms_value).toFixed(1)}x`,
+		`${(node.ms_value / wasm.ms_value).toFixed(1)}x`,
 	]);
 }
 

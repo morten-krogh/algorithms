@@ -42,7 +42,7 @@ test("bench prints a table header", async (_t) => {
 	assert.match(result.stdout, /size\(B\)/);
 	assert.match(result.stdout, /wasm MiB\/s/);
 	assert.match(result.stdout, /node MiB\/s/);
-	assert.match(result.stdout, /speedup/);
+	assert.match(result.stdout, /wasm\/node performance/);
 });
 
 test("bench prints one numeric row per message size", async (_t) => {
@@ -50,7 +50,7 @@ test("bench prints one numeric row per message size", async (_t) => {
 
 	assert.equal(result.code, 0);
 	for (const size of EXPECTED_SIZES) {
-		// size, iters, then wasm ms/h-s/MiB-s, node ms/h-s/MiB-s, speedup (Nx).
+		// size, iters, then wasm ms/h-s/MiB-s, node ms/h-s/MiB-s, wasm/node perf (Nx).
 		const row = new RegExp(
 			`^\\s*${size}\\s+\\d+\\s+\\d+\\.\\d+\\s+\\d+\\s+\\d+\\.\\d+\\s+\\d+\\.\\d+\\s+\\d+\\s+\\d+\\.\\d+\\s+\\d+\\.\\d+x$`,
 			"m",
