@@ -45,14 +45,14 @@ Below follows a description of the currently implemented algorithms.
 Each algorithm get its own subdirectory.
 
 
-## Sha3-256
+## sha3-256-wasm
 
 
 
-## Sha3-512
+## sha3-512-wasm
 
 SHA3-512 implemented as a hand-written WebAssembly Keccak-p[1600] permutation with a
-dependency-free JavaScript wrapper. See [sha3-512/](sha3-512/) for the package and its README.
+dependency-free JavaScript wrapper. See [sha3-512-wasm/](sha3-512-wasm/) for the package and its README.
 
 ### Benchmark
 
@@ -76,7 +76,7 @@ For small messages the WebAssembly implementation wins (roughly 2×) because it 
 object allocation; for large messages Node's native OpenSSL SHA3-512 pulls ahead, leaving the
 WebAssembly implementation at about 0.7×.
 
-## Shake-256
+## shake-256-wasm
 
 
 A collection of high performance, or otherwise interesting, algorithms

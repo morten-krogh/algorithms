@@ -1,5 +1,5 @@
 {
-	"name": "sha3-512",
+	"name": "sha3-256-wasm",
 	"version": "1.0.0",
 	"description": "",
 	"license": "ISC",
@@ -7,14 +7,14 @@
 	"type": "module",
 	"main": "index.js",
 	"bin": {
-		"sha3-512": "bin/sha3-512.js"
+		"sha3-256": "bin/sha3-256.js"
 	},
 	"directories": {
 		"test": "test"
 	},
 	"scripts": {
-		"build": "wat2wasm src/sha3-512.wat -o lib/sha3-512.wasm && cp src/sha3-512.js lib/sha3-512.js",
-		"server": "http-server -p 9876 -c-1 -o /html/sha3-512.html",
+		"build": "wat2wasm src/sha3-256.wat -o lib/sha3-256.wasm && cp src/sha3-256.js lib/sha3-256.js",
+		"server": "http-server -p 9876 -c-1 -o /html/sha3-256.html",
 		"tsgo": "tsgo -p tsconfig.json",
 		"biome": "biome check",
 		"test": "node --test"
