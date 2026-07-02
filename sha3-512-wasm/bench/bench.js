@@ -104,7 +104,10 @@ function bench_row(sha3, run) {
 	}
 
 	const wasm = metrics(
-		time_iterations(() => sha3.reset().update(message).digest(), run.iterations),
+		time_iterations(
+			() => sha3.reset().update(message).digest(),
+			run.iterations,
+		),
 		run,
 	);
 	const node = metrics(
