@@ -135,7 +135,7 @@ function bench_row(shake, run) {
 		node.ms,
 		node.hashes,
 		node.mib,
-		`${(node.ms_value / wasm.ms_value).toFixed(1)}x`,
+		`${(node.ms_value / wasm.ms_value).toFixed(2)}x`,
 	]);
 }
 
