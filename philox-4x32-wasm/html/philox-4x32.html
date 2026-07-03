@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Philox4x32</title>
+		<style>
+			:root {
+				color-scheme: light dark;
+				font-family:
+					ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+					sans-serif;
+			}
+
+			body {
+				margin: 0;
+				background: Canvas;
+				color: CanvasText;
+			}
+
+			main {
+				box-sizing: border-box;
+				inline-size: min(100%, 900px);
+				margin: 0 auto;
+				padding: 32px 20px;
+			}
+
+			h1 {
+				margin: 0 0 24px;
+				font-size: 28px;
+				font-weight: 650;
+			}
+
+			form {
+				display: grid;
+				gap: 20px;
+			}
+
+			fieldset {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+				gap: 12px;
+				margin: 0;
+				padding: 0;
+				border: 0;
+			}
+
+			legend {
+				grid-column: 1 / -1;
+				margin-block-end: 4px;
+				font-weight: 650;
+			}
+
+			label {
+				display: grid;
+				gap: 6px;
+				font-size: 13px;
+			}
+
+			input,
+			output {
+				box-sizing: border-box;
+				inline-size: 100%;
+				border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+				border-radius: 6px;
+				padding: 10px 12px;
+				font: 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+				background: Canvas;
+				color: CanvasText;
+			}
+
+			output {
+				display: block;
+				min-block-size: 44px;
+				overflow-wrap: anywhere;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Philox4x32</h1>
+			<form id="form">
+				<fieldset>
+					<legend>Counter</legend>
+					<label>c0 <input name="c0" value="243f6a88" maxlength="8" /></label>
+					<label>c1 <input name="c1" value="85a308d3" maxlength="8" /></label>
+					<label>c2 <input name="c2" value="13198a2e" maxlength="8" /></label>
+					<label>c3 <input name="c3" value="03707344" maxlength="8" /></label>
+				</fieldset>
+				<fieldset>
+					<legend>Key</legend>
+					<label>k0 <input name="k0" value="a4093822" maxlength="8" /></label>
+					<label>k1 <input name="k1" value="299f31d0" maxlength="8" /></label>
+				</fieldset>
+				<output id="output"></output>
+			</form>
+		</main>
+		<script type="module">
+			import { Philox4x32 } from "../lib/philox-4x32.js";
+
+			const form = document.querySelector("#form");
+			const output = document.querySelector("#output");
+			const philox = await new Philox4x32().initialize(
+				"../lib/philox-4x32.wasm",
+			);
+
+			function readWord(name) {
+				const field = form.elements.namedItem(name);
+				if (!(field instanceof HTMLInputElement)) {
+					throw new Error(`Missing ${name}`);
+				}
+				if (!/^[0-9a-f]{1,8}$/i.test(field.value)) {
+					throw new Error("Invalid hex input");
+				}
+				return Number.parseInt(field.value, 16) >>> 0;
+			}
+
+			function render() {
+				try {
+					const counter = new Uint32Array([
+						readWord("c0"),
+						readWord("c1"),
+						readWord("c2"),
+						readWord("c3"),
+					]);
+					const key = new Uint32Array([readWord("k0"), readWord("k1")]);
+					const words = philox.generate(counter, key);
+					output.value = Array.from(words, (word) =>
+						word.toString(16).padStart(8, "0"),
+					).join(" ");
+				} catch (error) {
+					output.value = error instanceof Error ? error.message : String(error);
+				}
+			}
+
+			form.addEventListener("input", render);
+			render();
+		</script>
+	</body>
+</html>

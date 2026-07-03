@@ -127,3 +127,26 @@ For small messages the WebAssembly implementation wins (roughly 1.4×) because i
 object allocation; for large messages Node's native OpenSSL SHAKE256 pulls ahead, leaving the
 WebAssembly implementation at about 0.7×.
 
+## philox-4x32-wasm
+
+Philox4x32-10 implemented as a hand-written WebAssembly counter-based random number generator with
+a dependency-free JavaScript wrapper. See [philox-4x32-wasm/](philox-4x32-wasm/) for the package.
+
+### Benchmark
+
+`node bench/bench.js` compares this WebAssembly implementation against a pure JavaScript
+Philox4x32-10 reference over a range of output block counts. The run below was measured locally
+(`wasm/js performance` = JS time / wasm time, so above 1.0 means the WebAssembly implementation is
+faster):
+
+```
+   blocks     iters    wasm(ms)  wasm blocks/s   wasm MiB/s      js(ms)   js blocks/s    js MiB/s  wasm/js performance
+        1    200000       12.15       16460116       251.16       30.79       6494754       99.10                2.53x
+       16     50000       11.55       69275819      1057.07       97.64       8193608      125.02                8.45x
+     1024      1000       11.29       90735562      1384.51      121.39       8435647      128.72               10.76x
+    16384       100       17.81       91997353      1403.77      236.93       6915072      105.52               13.30x
+   262144        10       29.06       90216771      1376.60      384.47       6818252      104.04               13.23x
+```
+
+The WebAssembly implementation is faster across the benchmark range, with the largest gains on bulk
+generation because the wrapper chunks output through the raw one-page WAT module.

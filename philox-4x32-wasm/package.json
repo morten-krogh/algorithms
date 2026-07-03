@@ -1,0 +1,30 @@
+{
+	"name": "philox-4x32-wasm",
+	"version": "1.0.0",
+	"description": "",
+	"license": "ISC",
+	"author": "",
+	"type": "module",
+	"main": "lib/philox-4x32.js",
+	"bin": {
+		"philox-4x32": "bin/philox-4x32.js",
+		"philox-4x32-prng": "bin/philox-4x32-prng.js"
+	},
+	"directories": {
+		"test": "test"
+	},
+	"scripts": {
+		"build": "wat2wasm src/philox-4x32.wat -o lib/philox-4x32.wasm && cp src/philox-4x32.js lib/philox-4x32.js",
+		"server": "http-server -p 9876 -c-1 -o /html/philox-4x32.html",
+		"tsgo": "tsgo -p tsconfig.json",
+		"biome": "biome check",
+		"test": "node --test"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.1",
+		"@types/node": "24.10.2",
+		"@typescript/native-preview": "^7.0.0-dev.20260629.1",
+		"http-server": "^14.1.1",
+		"wabt": "^1.0.39"
+	}
+}
