@@ -97,6 +97,47 @@ static void check_context_isolation(void) {
 	}
 }
 
+static void check_copy_boundaries(void) {
+	static const size_t chunk_sizes[] = {
+		1, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 128, 135, 136, 137,
+	};
+	uint8_t input[400];
+	uint8_t expected[SHA3_256_DIGEST_BYTES];
+	uint8_t actual[SHA3_256_DIGEST_BYTES];
+	sha3_256_ctx ctx;
+
+	for (size_t index = 0; index < sizeof(input); ++index) {
+		input[index] = (uint8_t)(index * 29U + 7U);
+	}
+	for (size_t length = 0; length <= sizeof(input); ++length) {
+		sha3_256_init(&ctx);
+		sha3_256_update(&ctx, input, length);
+		sha3_256_digest(&ctx, expected);
+
+		for (size_t chunk_index = 0;
+			chunk_index < sizeof(chunk_sizes) / sizeof(chunk_sizes[0]);
+			++chunk_index) {
+			const size_t chunk_size = chunk_sizes[chunk_index];
+			sha3_256_init(&ctx);
+			for (size_t offset = 0; offset < length; offset += chunk_size) {
+				size_t chunk = length - offset;
+				if (chunk > chunk_size) {
+					chunk = chunk_size;
+				}
+				sha3_256_update(&ctx, input + offset, chunk);
+			}
+			sha3_256_digest(&ctx, actual);
+			if (memcmp(actual, expected, sizeof(actual)) != 0) {
+				fprintf(stderr,
+					"copy boundary mismatch: length %zu, chunk %zu\n",
+					length, chunk_size);
+				++failures;
+				return;
+			}
+		}
+	}
+}
+
 static void check_bounds_and_reinit(void) {
 	static const char expected_abc[] =
 		"3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532";
@@ -186,6 +227,7 @@ int main(void) {
 		mixed_chunks, sizeof(mixed_chunks) / sizeof(mixed_chunks[0]),
 		incrementing_digest);
 	check_context_isolation();
+	check_copy_boundaries();
 	check_bounds_and_reinit();
 
 	if (failures != 0) {

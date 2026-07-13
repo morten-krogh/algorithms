@@ -79,6 +79,8 @@ expanded four at a time in a six-iteration loop, balancing loop overhead and
 code size. Each round uses a 67-instruction vector schedule: `xar` fuses the
 Theta correction with Rho rotation, and Chi consumes the resulting
 Pi-permuted register layout directly before restoring the canonical layout.
+State loads and stores are paired. Context clearing, pending-block copies, and
+final padding use 32- and 16-byte vector operations with bounded byte tails.
 
 Finalization uses the SHA3 domain suffix `0x06`, sets the last rate byte's
 `0x80` bit, absorbs the padded block, and returns the first 32 little-endian
@@ -102,11 +104,11 @@ the assembly implementation is faster.
 
 ```text
   size(B)     iters     asm(ms)     asm h/s    asm MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s  asm/CryptoKit   asm/OpenSSL
-        0    200000       42.32     4725986         0.00           89.79        2227513              0.00         46.32        4317595             0.00          2.12x         1.09x
-       64    200000       40.77     4905758       299.42           90.26        2215774            135.24         46.38        4311739           263.17          2.21x         1.14x
-     1024     50000       62.10      805208       786.34           79.95         625417            610.76         63.78         783892           765.52          1.29x         1.03x
-    16384     10000      179.74       55635       869.30          198.57          50361            786.89        181.62          55059           860.30          1.10x         1.01x
-   262144      1000      285.90        3498       874.44          311.77           3208            801.88        287.74           3475           868.85          1.09x         1.01x
-  1048576       300      342.36         876       876.27          375.35            799            799.26        344.66            870           870.43          1.10x         1.01x
- 10485760        30      345.95          87       867.17          374.65             80            800.74        346.76             87           865.16          1.08x         1.00x
+        0    200000       32.27     6197411         0.00           87.41        2288184              0.00         44.90        4453946             0.00          2.71x         1.39x
+       64    200000       31.43     6362790       388.35           88.35        2263684            138.16         45.73        4373684           266.95          2.81x         1.45x
+     1024     50000       59.57      839382       819.71           78.82         634369            619.50         63.53         787032           768.59          1.32x         1.07x
+    16384     10000      179.26       55784       871.62          198.61          50349            786.71        181.46          55110           861.09          1.11x         1.01x
+   262144      1000      285.22        3506       876.52          311.40           3211            802.83        287.46           3479           869.68          1.09x         1.01x
+  1048576       300      342.35         876       876.31          374.75            801            800.54        345.77            868           867.62          1.09x         1.01x
+ 10485760        30      342.86          87       874.99          374.57             80            800.92        344.97             87           869.65          1.09x         1.01x
 ```

@@ -102,11 +102,14 @@
 .p2align 2
 .globl _sha3_256_init
 _sha3_256_init:
-	mov	w1, #43
+	movi	v0.2d, #0
+	mov	w1, #10
 Linit_loop:
-	str	xzr, [x0], #8
+	stp	q0, q0, [x0], #32
 	subs	w1, w1, #1
 	b.ne	Linit_loop
+	str	q0, [x0], #16
+	str	xzr, [x0]
 	ret
 
 .p2align 2
@@ -114,14 +117,10 @@ Linit_loop:
 _sha3_256_update:
 	cbz	x2, Lupdate_empty
 
-	stp	x29, x30, [sp, #-112]!
+	stp	x29, x30, [sp, #-48]!
 	mov	x29, sp
 	stp	x19, x20, [sp, #16]
 	stp	x21, x22, [sp, #32]
-	stp	d8, d9, [sp, #48]
-	stp	d10, d11, [sp, #64]
-	stp	d12, d13, [sp, #80]
-	stp	d14, d15, [sp, #96]
 
 	mov	x19, x0
 	mov	x20, x1
@@ -137,12 +136,28 @@ _sha3_256_update:
 	add	x4, x19, #PENDING_OFFSET
 	add	x4, x4, x22
 	mov	x5, x3
-Lupdate_pending_copy:
+	cmp	x5, #32
+	b.lo	Lupdate_pending_copy_16
+Lupdate_pending_copy_32:
+	ldp	q0, q1, [x20], #32
+	stp	q0, q1, [x4], #32
+	sub	x5, x5, #32
+	cmp	x5, #32
+	b.hs	Lupdate_pending_copy_32
+Lupdate_pending_copy_16:
+	cmp	x5, #16
+	b.lo	Lupdate_pending_copy_bytes
+	ldr	q0, [x20], #16
+	str	q0, [x4], #16
+	sub	x5, x5, #16
+Lupdate_pending_copy_bytes:
 	cbz	x5, Lupdate_pending_copied
+	.p2align 2
+Lupdate_pending_copy_byte:
 	ldrb	w6, [x20], #1
 	strb	w6, [x4], #1
-	sub	x5, x5, #1
-	b	Lupdate_pending_copy
+	subs	x5, x5, #1
+	b.ne	Lupdate_pending_copy_byte
 Lupdate_pending_copied:
 	sub	x21, x21, x3
 	add	x22, x22, x3
@@ -160,6 +175,8 @@ Lupdate_pending_copied:
 
 Lupdate_direct:
 	/* Absorb all complete input blocks directly, leaving only the remainder. */
+	cmp	x21, #RATE_BYTES
+	b.lo	Lupdate_tail
 	mov	x3, #RATE_BYTES
 	udiv	x4, x21, x3
 	msub	x5, x4, x3, x21
@@ -176,34 +193,44 @@ Lupdate_tail:
 	cbz	x21, Lupdate_done
 	add	x4, x19, #PENDING_OFFSET
 	mov	x5, x21
-Lupdate_tail_copy:
+	cmp	x5, #32
+	b.lo	Lupdate_tail_copy_16
+Lupdate_tail_copy_32:
+	ldp	q0, q1, [x20], #32
+	stp	q0, q1, [x4], #32
+	sub	x5, x5, #32
+	cmp	x5, #32
+	b.hs	Lupdate_tail_copy_32
+Lupdate_tail_copy_16:
+	cmp	x5, #16
+	b.lo	Lupdate_tail_copy_bytes
+	ldr	q0, [x20], #16
+	str	q0, [x4], #16
+	sub	x5, x5, #16
+Lupdate_tail_copy_bytes:
+	cbz	x5, Lupdate_tail_copied
+	.p2align 2
+Lupdate_tail_copy_byte:
 	ldrb	w6, [x20], #1
 	strb	w6, [x4], #1
 	subs	x5, x5, #1
-	b.ne	Lupdate_tail_copy
+	b.ne	Lupdate_tail_copy_byte
+Lupdate_tail_copied:
 	str	x21, [x19, #PENDING_LENGTH_OFFSET]
 
 Lupdate_done:
-	ldp	d14, d15, [sp, #96]
-	ldp	d12, d13, [sp, #80]
-	ldp	d10, d11, [sp, #64]
-	ldp	d8, d9, [sp, #48]
 	ldp	x21, x22, [sp, #32]
 	ldp	x19, x20, [sp, #16]
-	ldp	x29, x30, [sp], #112
+	ldp	x29, x30, [sp], #48
 Lupdate_empty:
 	ret
 
 .p2align 2
 .globl _sha3_256_digest
 _sha3_256_digest:
-	stp	x29, x30, [sp, #-96]!
+	stp	x29, x30, [sp, #-32]!
 	mov	x29, sp
 	stp	x19, x20, [sp, #16]
-	stp	d8, d9, [sp, #32]
-	stp	d10, d11, [sp, #48]
-	stp	d12, d13, [sp, #64]
-	stp	d14, d15, [sp, #80]
 	mov	x19, x0
 	mov	x20, x1
 
@@ -212,10 +239,27 @@ _sha3_256_digest:
 	add	x4, x1, x3
 	mov	x5, #RATE_BYTES
 	sub	x5, x5, x3
-Ldigest_zero_padding:
+	movi	v0.2d, #0
+	cmp	x5, #32
+	b.lo	Ldigest_zero_16
+Ldigest_zero_32:
+	stp	q0, q0, [x4], #32
+	sub	x5, x5, #32
+	cmp	x5, #32
+	b.hs	Ldigest_zero_32
+Ldigest_zero_16:
+	cmp	x5, #16
+	b.lo	Ldigest_zero_bytes
+	str	q0, [x4], #16
+	sub	x5, x5, #16
+Ldigest_zero_bytes:
+	cbz	x5, Ldigest_padding_cleared
+	.p2align 2
+Ldigest_zero_byte:
 	strb	wzr, [x4], #1
 	subs	x5, x5, #1
-	b.ne	Ldigest_zero_padding
+	b.ne	Ldigest_zero_byte
+Ldigest_padding_cleared:
 	mov	w5, #0x06
 	strb	w5, [x1, x3]
 	ldrb	w5, [x1, #(RATE_BYTES - 1)]
@@ -229,45 +273,34 @@ Ldigest_zero_padding:
 	ldp	q0, q1, [x19]
 	stp	q0, q1, [x20]
 
-	ldp	d14, d15, [sp, #80]
-	ldp	d12, d13, [sp, #64]
-	ldp	d10, d11, [sp, #48]
-	ldp	d8, d9, [sp, #32]
 	ldp	x19, x20, [sp, #16]
-	ldp	x29, x30, [sp], #96
+	ldp	x29, x30, [sp], #32
 	ret
 
 /*
  * Internal: absorb a positive multiple of 136 bytes.
  * x0 = context/state, x1 = input, x2 = byte length.
- * All SIMD registers and caller-saved integer registers are scratch.
+ * Preserves d8-d15 per the ABI; other SIMD and caller-saved integer
+ * registers are scratch.
  */
 .p2align 4
 Labsorb_blocks:
-	ldr	d0, [x0, #0]
-	ldr	d1, [x0, #8]
-	ldr	d2, [x0, #16]
-	ldr	d3, [x0, #24]
-	ldr	d4, [x0, #32]
-	ldr	d5, [x0, #40]
-	ldr	d6, [x0, #48]
-	ldr	d7, [x0, #56]
-	ldr	d8, [x0, #64]
-	ldr	d9, [x0, #72]
-	ldr	d10, [x0, #80]
-	ldr	d11, [x0, #88]
-	ldr	d12, [x0, #96]
-	ldr	d13, [x0, #104]
-	ldr	d14, [x0, #112]
-	ldr	d15, [x0, #120]
-	ldr	d16, [x0, #128]
-	ldr	d17, [x0, #136]
-	ldr	d18, [x0, #144]
-	ldr	d19, [x0, #152]
-	ldr	d20, [x0, #160]
-	ldr	d21, [x0, #168]
-	ldr	d22, [x0, #176]
-	ldr	d23, [x0, #184]
+	stp	d8, d9, [sp, #-64]!
+	stp	d10, d11, [sp, #16]
+	stp	d12, d13, [sp, #32]
+	stp	d14, d15, [sp, #48]
+	ldp	d0, d1, [x0, #0]
+	ldp	d2, d3, [x0, #16]
+	ldp	d4, d5, [x0, #32]
+	ldp	d6, d7, [x0, #48]
+	ldp	d8, d9, [x0, #64]
+	ldp	d10, d11, [x0, #80]
+	ldp	d12, d13, [x0, #96]
+	ldp	d14, d15, [x0, #112]
+	ldp	d16, d17, [x0, #128]
+	ldp	d18, d19, [x0, #144]
+	ldp	d20, d21, [x0, #160]
+	ldp	d22, d23, [x0, #176]
 	ldr	d24, [x0, #192]
 
 Labsorb_loop:
@@ -312,31 +345,23 @@ Lround_group_loop:
 	subs	x2, x2, #RATE_BYTES
 	b.ne	Labsorb_loop
 
-	str	d0, [x0, #0]
-	str	d1, [x0, #8]
-	str	d2, [x0, #16]
-	str	d3, [x0, #24]
-	str	d4, [x0, #32]
-	str	d5, [x0, #40]
-	str	d6, [x0, #48]
-	str	d7, [x0, #56]
-	str	d8, [x0, #64]
-	str	d9, [x0, #72]
-	str	d10, [x0, #80]
-	str	d11, [x0, #88]
-	str	d12, [x0, #96]
-	str	d13, [x0, #104]
-	str	d14, [x0, #112]
-	str	d15, [x0, #120]
-	str	d16, [x0, #128]
-	str	d17, [x0, #136]
-	str	d18, [x0, #144]
-	str	d19, [x0, #152]
-	str	d20, [x0, #160]
-	str	d21, [x0, #168]
-	str	d22, [x0, #176]
-	str	d23, [x0, #184]
+	stp	d0, d1, [x0, #0]
+	stp	d2, d3, [x0, #16]
+	stp	d4, d5, [x0, #32]
+	stp	d6, d7, [x0, #48]
+	stp	d8, d9, [x0, #64]
+	stp	d10, d11, [x0, #80]
+	stp	d12, d13, [x0, #96]
+	stp	d14, d15, [x0, #112]
+	stp	d16, d17, [x0, #128]
+	stp	d18, d19, [x0, #144]
+	stp	d20, d21, [x0, #160]
+	stp	d22, d23, [x0, #176]
 	str	d24, [x0, #192]
+	ldp	d14, d15, [sp, #48]
+	ldp	d12, d13, [sp, #32]
+	ldp	d10, d11, [sp, #16]
+	ldp	d8, d9, [sp], #64
 	ret
 
 .section __TEXT,__const
