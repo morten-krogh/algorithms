@@ -52,19 +52,49 @@ private func row(_ cells: [String]) -> String {
 	zip(cells, columns).map { pad($0.0, to: $0.1.width) }.joined(separator: "  ")
 }
 
-@inline(never)
-private func time(iterations: Int, body: () -> Void) -> Double {
-	for _ in 0..<min(1_000, iterations) {
-		body()
-	}
-	let start = ContinuousClock.now
-	for _ in 0..<iterations {
-		body()
-	}
-	let duration = start.duration(to: ContinuousClock.now)
+private struct Timing {
+	/// Time for the full iteration count at the fastest repetition's rate.
+	let milliseconds: Double
+	/// (slowest - fastest) / fastest across the repetitions.
+	let spread: Double
+}
+
+private func milliseconds(_ duration: Duration) -> Double {
 	let components = duration.components
 	return Double(components.seconds) * 1_000.0
 		+ Double(components.attoseconds) / 1.0e15
+}
+
+/*
+ * The warmup runs until the core has sustained load long enough to reach
+ * its maximum frequency; a fixed iteration count is too short for cheap
+ * bodies. Reporting the fastest of five equal repetitions discards
+ * scheduling and frequency-ramp noise, which only ever slows a run down.
+ */
+@inline(never)
+private func time(iterations: Int, body: () -> Void) -> Timing {
+	let repetitions = 5
+	let perRepetition = max(iterations / repetitions, 1)
+	let warmupFloor = Duration.milliseconds(200)
+	let warmupStart = ContinuousClock.now
+	while warmupStart.duration(to: ContinuousClock.now) < warmupFloor {
+		body()
+	}
+	var fastest = Double.infinity
+	var slowest = 0.0
+	for _ in 0..<repetitions {
+		let start = ContinuousClock.now
+		for _ in 0..<perRepetition {
+			body()
+		}
+		let elapsed = milliseconds(start.duration(to: ContinuousClock.now))
+		fastest = min(fastest, elapsed)
+		slowest = max(slowest, elapsed)
+	}
+	return Timing(
+		milliseconds: fastest * Double(iterations) / Double(perRepetition),
+		spread: (slowest - fastest) / fastest
+	)
 }
 
 private func metrics(elapsedMilliseconds: Double, run: Run) -> Metrics {
@@ -167,6 +197,7 @@ private func cryptoKitHash(_ buffers: Buffers) {
 private struct Benchmark {
 	static func main() {
 		let openssl = OpenSSLHash()
+		var worstSpreads = [0.0, 0.0, 0.0]
 		print(row(columns.map(\.header)))
 
 		for run in runs {
@@ -183,24 +214,23 @@ private struct Benchmark {
 				exit(EXIT_FAILURE)
 			}
 
-			let assembly = metrics(
-				elapsedMilliseconds: time(iterations: run.iterations) {
+			let timings = [
+				time(iterations: run.iterations) {
 					assemblyHash(buffers)
 				},
-				run: run
-			)
-			let cryptoKit = metrics(
-				elapsedMilliseconds: time(iterations: run.iterations) {
+				time(iterations: run.iterations) {
 					cryptoKitHash(buffers)
 				},
-				run: run
-			)
-			let opensslMetrics = metrics(
-				elapsedMilliseconds: time(iterations: run.iterations) {
+				time(iterations: run.iterations) {
 					openssl.hash(buffers.rawMessage, into: buffers.digest)
 				},
-				run: run
-			)
+			]
+			for index in worstSpreads.indices {
+				worstSpreads[index] = max(worstSpreads[index], timings[index].spread)
+			}
+			let assembly = metrics(elapsedMilliseconds: timings[0].milliseconds, run: run)
+			let cryptoKit = metrics(elapsedMilliseconds: timings[1].milliseconds, run: run)
+			let opensslMetrics = metrics(elapsedMilliseconds: timings[2].milliseconds, run: run)
 
 			print(row(
 				[String(run.size), String(run.iterations)]
@@ -213,5 +243,10 @@ private struct Benchmark {
 					]
 			))
 		}
+
+		print(String(
+			format: "worst repetition spread: asm %.1f%%, CryptoKit %.1f%%, OpenSSL %.1f%%",
+			worstSpreads[0] * 100, worstSpreads[1] * 100, worstSpreads[2] * 100
+		))
 	}
 }

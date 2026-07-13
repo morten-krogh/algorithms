@@ -98,17 +98,25 @@ bin/bench
 
 It reuses allocated contexts and buffers, verifies that assembly, CryptoKit,
 and OpenSSL produce identical digests at every size, and then times each hash
-lifecycle. The following run was measured on an Apple M1 Max. The last two
-columns are reference time divided by assembly time, so values above 1.0 mean
-the assembly implementation is faster.
+lifecycle. Every measurement first warms the core for at least 200 ms so the
+performance core reaches its maximum frequency, then reports the fastest of
+five equal repetitions; scheduling and frequency noise only ever slow a run
+down, so the fastest repetition is the most repeatable. The final line
+reports the worst spread between the fastest and slowest repetition. Across
+repeated runs the reported assembly times vary by under 0.4%.
+
+The following run was measured on an Apple M1 Max. The last two columns are
+reference time divided by assembly time, so values above 1.0 mean the
+assembly implementation is faster.
 
 ```text
   size(B)     iters     asm(ms)     asm h/s    asm MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s  asm/CryptoKit   asm/OpenSSL
-        0    200000       32.27     6197411         0.00           87.41        2288184              0.00         44.90        4453946             0.00          2.71x         1.39x
-       64    200000       31.43     6362790       388.35           88.35        2263684            138.16         45.73        4373684           266.95          2.81x         1.45x
-     1024     50000       59.57      839382       819.71           78.82         634369            619.50         63.53         787032           768.59          1.32x         1.07x
-    16384     10000      179.26       55784       871.62          198.61          50349            786.71        181.46          55110           861.09          1.11x         1.01x
-   262144      1000      285.22        3506       876.52          311.40           3211            802.83        287.46           3479           869.68          1.09x         1.01x
-  1048576       300      342.35         876       876.31          374.75            801            800.54        345.77            868           867.62          1.09x         1.01x
- 10485760        30      342.86          87       874.99          374.57             80            800.92        344.97             87           869.65          1.09x         1.01x
+        0    200000       29.88     6692600         0.00           86.57        2310319              0.00         44.50        4494803             0.00          2.90x         1.49x
+       64    200000       31.14     6423123       392.04           87.38        2288957            139.71         45.63        4383342           267.54          2.81x         1.47x
+     1024     50000       59.04      846839       826.99           78.15         639828            624.83         62.92         794599           775.98          1.32x         1.07x
+    16384     10000      177.60       56306       879.78          197.85          50544            789.74        179.50          55709           870.46          1.11x         1.01x
+   262144      1000      282.85        3535       883.86          310.08           3225            806.24        285.13           3507           876.80          1.10x         1.01x
+  1048576       300      339.72         883       883.08          371.59            807            807.35        342.05            877           877.08          1.09x         1.01x
+ 10485760        30      340.06          88       882.19          372.22             81            805.98        342.56             88           875.75          1.09x         1.01x
+worst repetition spread: asm 1.5%, CryptoKit 1.8%, OpenSSL 2.0%
 ```

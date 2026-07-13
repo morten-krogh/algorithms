@@ -103,13 +103,18 @@
 .globl _sha3_256_init
 _sha3_256_init:
 	movi	v0.2d, #0
-	mov	w1, #10
-Linit_loop:
-	stp	q0, q0, [x0], #32
-	subs	w1, w1, #1
-	b.ne	Linit_loop
-	str	q0, [x0], #16
-	str	xzr, [x0]
+	stp	q0, q0, [x0]
+	stp	q0, q0, [x0, #32]
+	stp	q0, q0, [x0, #64]
+	stp	q0, q0, [x0, #96]
+	stp	q0, q0, [x0, #128]
+	stp	q0, q0, [x0, #160]
+	stp	q0, q0, [x0, #192]
+	stp	q0, q0, [x0, #224]
+	stp	q0, q0, [x0, #256]
+	stp	q0, q0, [x0, #288]
+	str	q0, [x0, #320]
+	str	xzr, [x0, #PENDING_LENGTH_OFFSET]
 	ret
 
 .p2align 2
@@ -302,6 +307,8 @@ Labsorb_blocks:
 	ldp	d20, d21, [x0, #160]
 	ldp	d22, d23, [x0, #176]
 	ldr	d24, [x0, #192]
+	adrp	x11, Lround_constants@PAGE
+	add	x11, x11, Lround_constants@PAGEOFF
 
 Labsorb_loop:
 	ldp	d25, d26, [x1], #16
@@ -331,8 +338,8 @@ Labsorb_loop:
 	ldr	d25, [x1], #8
 	eor	v16.16b, v16.16b, v25.16b
 
-	adrp	x9, Lround_constants@PAGE
-	add	x9, x9, Lround_constants@PAGEOFF
+	sub	x2, x2, #RATE_BYTES
+	mov	x9, x11
 	mov	w10, #6
 Lround_group_loop:
 	KECCAK_ROUND
@@ -342,8 +349,7 @@ Lround_group_loop:
 	subs	w10, w10, #1
 	b.ne	Lround_group_loop
 
-	subs	x2, x2, #RATE_BYTES
-	b.ne	Labsorb_loop
+	cbnz	x2, Labsorb_loop
 
 	stp	d0, d1, [x0, #0]
 	stp	d2, d3, [x0, #16]
