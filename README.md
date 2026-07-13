@@ -72,6 +72,29 @@ For small messages the WebAssembly implementation wins (roughly 2×) because it 
 object allocation; for large messages Node's native OpenSSL SHA3-256 pulls ahead, leaving the
 WebAssembly implementation at about 0.7×.
 
+## sha3-256-arm64-macos
+
+SHA3-256 implemented in handwritten ARM64 assembly for macOS using the ARM SHA3 extension. It
+provides a caller-owned streaming C API and an all-assembly command-line tool that hashes binary
+stdin. See [sha3-256-arm64-macos/](sha3-256-arm64-macos/) for build, API, and usage details.
+
+### Benchmark
+
+`bin/bench` compares the assembly implementation against both CryptoKit and OpenSSL SHA3-256. The
+run below was measured on an **Apple M1 Max**. Ratios are reference time / assembly time, so above
+1.0 means the assembly implementation is faster:
+
+```text
+  size(B)     iters     asm(ms)     asm h/s    asm MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s  asm/CryptoKit   asm/OpenSSL
+        0    200000       69.11     2893991         0.00           87.76        2278863              0.00         44.67        4477704             0.00          1.27x         0.65x
+       64    200000       49.35     4052805       247.36           88.87        2250550            137.36         45.98        4349430           265.47          1.80x         0.93x
+     1024     50000       79.96      625298       610.64           78.56         636466            621.55         63.85         783073           764.72          0.98x         0.80x
+    16384     10000      233.99       42738       667.78          198.26          50440            788.12        179.72          55643           869.42          0.85x         0.77x
+   262144      1000      371.80        2690       672.40          310.27           3223            805.76        285.59           3502           875.39          0.83x         0.77x
+  1048576       300      446.44         672       671.98          371.98            807            806.50        343.30            874           873.86          0.83x         0.77x
+ 10485760        30      452.39          66       663.15          376.03             80            797.82        344.03             87           872.02          0.83x         0.76x
+```
+
 ## sha3-512-wasm
 
 SHA3-512 implemented as a hand-written WebAssembly Keccak-p[1600] permutation with a
