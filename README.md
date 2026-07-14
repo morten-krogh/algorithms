@@ -72,57 +72,6 @@ For small messages the WebAssembly implementation wins (roughly 2×) because it 
 object allocation; for large messages Node's native OpenSSL SHA3-256 pulls ahead, leaving the
 WebAssembly implementation at about 0.7×.
 
-## sha3-256-arm64-macos
-
-SHA3-256 implemented in handwritten ARM64 assembly for macOS using the ARM SHA3 extension. It
-provides a caller-owned streaming C API and an all-assembly command-line tool that hashes binary
-stdin. See [sha3-256-arm64-macos/](sha3-256-arm64-macos/) for build, API, and usage details.
-
-### Benchmark
-
-`bin/bench` compares the assembly implementation against both CryptoKit and OpenSSL SHA3-256. The
-run below was measured on an **Apple M1 Max**. Ratios are reference time / assembly time, so above
-1.0 means the assembly implementation is faster:
-
-```text
-  size(B)     iters     asm(ms)     asm h/s    asm MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s  asm/CryptoKit   asm/OpenSSL
-        0    200000       32.27     6197411         0.00           87.41        2288184              0.00         44.90        4453946             0.00          2.71x         1.39x
-       64    200000       31.43     6362790       388.35           88.35        2263684            138.16         45.73        4373684           266.95          2.81x         1.45x
-     1024     50000       59.57      839382       819.71           78.82         634369            619.50         63.53         787032           768.59          1.32x         1.07x
-    16384     10000      179.26       55784       871.62          198.61          50349            786.71        181.46          55110           861.09          1.11x         1.01x
-   262144      1000      285.22        3506       876.52          311.40           3211            802.83        287.46           3479           869.68          1.09x         1.01x
-  1048576       300      342.35         876       876.31          374.75            801            800.54        345.77            868           867.62          1.09x         1.01x
- 10485760        30      342.86          87       874.99          374.57             80            800.92        344.97             87           869.65          1.09x         1.01x
-```
-
-## sha3-256-x86_64-linux
-
-SHA3-256 implemented in handwritten x86-64 assembly for Linux using AVX-512
-(`vprolq` rotations and `vpternlogq` three-input logic; requires AVX-512F and
-AVX-512VL). It provides a caller-owned streaming C API and an all-assembly
-command-line tool that hashes binary stdin as a freestanding static binary using
-raw Linux syscalls. See [sha3-256-x86_64-linux/](sha3-256-x86_64-linux/) for build,
-API, and usage details.
-
-### Benchmark
-
-`bin/bench` compares the assembly implementation against both OpenSSL and libgcrypt
-SHA3-256. The run below was measured on an **AMD EPYC 9575F** (Zen 5, KVM guest with
-two vCPUs). Ratios are reference time / assembly time, so above 1.0 means the
-assembly implementation is faster:
-
-```text
-  size(B)     iters     asm(ms)     asm h/s    asm MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s   gcrypt(ms)    gcrypt h/s    gcrypt MiB/s   asm/OpenSSL   asm/gcrypt
-        0    200000       38.55     5187564         0.00         79.59        2512968             0.00        43.89       4556926            0.00         2.06x        1.14x
-       64    200000       41.12     4863426       296.84         53.08        3768064           229.98        46.73       4279651          261.21         1.29x        1.14x
-     1024     50000       75.52      662038       646.52         88.10         567524           554.22        72.62        688483          672.35         1.17x        0.96x
-    16384     10000      215.95       46306       723.53        275.20          36337           567.76       215.82         46335          723.98         1.27x        1.00x
-   262144      1000      344.36        2904       725.98        420.48           2378           594.56       346.01          2890          722.53         1.22x        1.00x
-  1048576       300      407.46         736       736.27        523.89            573           572.63       411.01           730          729.90         1.29x        1.01x
- 10485760        30      416.25          72       720.71        496.64             60           604.06       418.38            72          717.05         1.19x        1.01x
-worst repetition spread: asm 9.5%, OpenSSL 30.5%, gcrypt 16.7%
-```
-
 ## sha3-512-wasm
 
 SHA3-512 implemented as a hand-written WebAssembly Keccak-p[1600] permutation with a
@@ -201,3 +150,55 @@ faster):
 
 The WebAssembly implementation is faster across the benchmark range, with the largest gains on bulk
 generation because the wrapper chunks output through the raw one-page WAT module.
+
+## sha3-256-arm64-macos
+
+SHA3-256 implemented in handwritten ARM64 assembly for macOS using the ARM SHA3 extension. It
+provides a caller-owned streaming C API and an all-assembly command-line tool that hashes binary
+stdin. See [sha3-256-arm64-macos/](sha3-256-arm64-macos/) for build, API, and usage details.
+
+### Benchmark
+
+`bin/bench` compares the assembly implementation against both CryptoKit and OpenSSL SHA3-256. The
+run below was measured on an **Apple M1 Max**. Ratios are reference time / assembly time, so above
+1.0 means the assembly implementation is faster:
+
+```text
+  size(B)     iters     asm(ms)     asm h/s    asm MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s  asm/CryptoKit   asm/OpenSSL
+        0    200000       32.27     6197411         0.00           87.41        2288184              0.00         44.90        4453946             0.00          2.71x         1.39x
+       64    200000       31.43     6362790       388.35           88.35        2263684            138.16         45.73        4373684           266.95          2.81x         1.45x
+     1024     50000       59.57      839382       819.71           78.82         634369            619.50         63.53         787032           768.59          1.32x         1.07x
+    16384     10000      179.26       55784       871.62          198.61          50349            786.71        181.46          55110           861.09          1.11x         1.01x
+   262144      1000      285.22        3506       876.52          311.40           3211            802.83        287.46           3479           869.68          1.09x         1.01x
+  1048576       300      342.35         876       876.31          374.75            801            800.54        345.77            868           867.62          1.09x         1.01x
+ 10485760        30      342.86          87       874.99          374.57             80            800.92        344.97             87           869.65          1.09x         1.01x
+```
+
+## sha3-256-x86_64-linux
+
+SHA3-256 implemented in handwritten x86-64 assembly for Linux using AVX-512
+(`vprolq` rotations and `vpternlogq` three-input logic; requires AVX-512F and
+AVX-512VL). It provides a caller-owned streaming C API and an all-assembly
+command-line tool that hashes binary stdin as a freestanding static binary using
+raw Linux syscalls. See [sha3-256-x86_64-linux/](sha3-256-x86_64-linux/) for build,
+API, and usage details.
+
+### Benchmark
+
+`bin/bench` compares the assembly implementation against both OpenSSL and libgcrypt
+SHA3-256. The run below was measured on an **AMD EPYC 9575F** (Zen 5, KVM guest with
+two vCPUs). Ratios are reference time / assembly time, so above 1.0 means the
+assembly implementation is faster:
+
+```text
+  size(B)     iters     asm(ms)     asm h/s    asm MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s   gcrypt(ms)    gcrypt h/s    gcrypt MiB/s   asm/OpenSSL   asm/gcrypt
+        0    200000       38.55     5187564         0.00         79.59        2512968             0.00        43.89       4556926            0.00         2.06x        1.14x
+       64    200000       41.12     4863426       296.84         53.08        3768064           229.98        46.73       4279651          261.21         1.29x        1.14x
+     1024     50000       75.52      662038       646.52         88.10         567524           554.22        72.62        688483          672.35         1.17x        0.96x
+    16384     10000      215.95       46306       723.53        275.20          36337           567.76       215.82         46335          723.98         1.27x        1.00x
+   262144      1000      344.36        2904       725.98        420.48           2378           594.56       346.01          2890          722.53         1.22x        1.00x
+  1048576       300      407.46         736       736.27        523.89            573           572.63       411.01           730          729.90         1.29x        1.01x
+ 10485760        30      416.25          72       720.71        496.64             60           604.06       418.38            72          717.05         1.19x        1.01x
+worst repetition spread: asm 9.5%, OpenSSL 30.5%, gcrypt 16.7%
+```
+
