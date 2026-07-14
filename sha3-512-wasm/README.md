@@ -128,8 +128,8 @@ node bench/bench.js
 
 Prints a table comparing this implementation with `node:crypto` and
 [hash-wasm](https://www.npmjs.com/package/hash-wasm) over several message sizes (columns:
-`size(B)`, `iters`, then `ms`/`h/s`/`MiB/s` for each implementation, and the `wasm/node` and
-`wasm/hash-wasm` time ratios). Each row is also cross-checked for digest equality across all
+`size(B)`, `iters`, then `ms`/`h/s`/`MiB/s` for each implementation, and the `sha3-512-wasm/node` and
+`sha3-512-wasm/hash-wasm` time ratios). Each row is also cross-checked for digest equality across all
 three implementations before timing.
 
 # API

@@ -25,13 +25,13 @@ const RUNS = [
 const COLUMNS = [
 	{ header: "blocks", width: 9 },
 	{ header: "iters", width: 8 },
-	{ header: "wasm(ms)", width: 10 },
-	{ header: "wasm blocks/s", width: 13 },
-	{ header: "wasm MiB/s", width: 11 },
+	{ header: "philox-4x32-wasm(ms)", width: 21 },
+	{ header: "philox-4x32-wasm blocks/s", width: 26 },
+	{ header: "philox-4x32-wasm MiB/s", width: 23 },
 	{ header: "js(ms)", width: 10 },
 	{ header: "js blocks/s", width: 12 },
 	{ header: "js MiB/s", width: 10 },
-	{ header: "wasm/js performance", width: 19 },
+	{ header: "philox-4x32-wasm/js", width: 20 },
 ];
 
 /**

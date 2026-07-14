@@ -36,17 +36,17 @@ struct column {
 static const struct column columns[] = {
 	{"size(B)", 9},
 	{"iters", 8},
-	{"asm(ms)", 10},
-	{"asm h/s", 10},
-	{"asm MiB/s", 11},
+	{"sha3-256-x86_64-linux(ms)", 26},
+	{"sha3-256-x86_64-linux h/s", 26},
+	{"sha3-256-x86_64-linux MiB/s", 28},
 	{"OpenSSL(ms)", 12},
 	{"OpenSSL h/s", 13},
 	{"OpenSSL MiB/s", 15},
 	{"gcrypt(ms)", 11},
 	{"gcrypt h/s", 12},
 	{"gcrypt MiB/s", 14},
-	{"asm/OpenSSL", 12},
-	{"asm/gcrypt", 11},
+	{"sha3-256-x86_64-linux/OpenSSL", 30},
+	{"sha3-256-x86_64-linux/gcrypt", 29},
 };
 
 enum { column_count = sizeof(columns) / sizeof(columns[0]) };
@@ -274,7 +274,7 @@ int main(void) {
 		free(buffers.message);
 	}
 
-	printf("worst repetition spread: asm %.1f%%, OpenSSL %.1f%%, "
+	printf("worst repetition spread: sha3-256-x86_64-linux %.1f%%, OpenSSL %.1f%%, "
 		"gcrypt %.1f%%\n",
 		worst_spreads[0] * 100.0, worst_spreads[1] * 100.0,
 		worst_spreads[2] * 100.0);

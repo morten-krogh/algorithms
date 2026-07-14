@@ -38,9 +38,9 @@ test("bench prints a table header", async (_t) => {
 	assert.equal(result.code, 0);
 	assert.equal(result.stderr, "");
 	assert.match(result.stdout, /blocks/);
-	assert.match(result.stdout, /wasm MiB\/s/);
+	assert.match(result.stdout, /philox-4x32-wasm MiB\/s/);
 	assert.match(result.stdout, /js MiB\/s/);
-	assert.match(result.stdout, /wasm\/js performance/);
+	assert.match(result.stdout, /philox-4x32-wasm\/js/);
 });
 
 test("bench prints one numeric row per block count", async (_t) => {

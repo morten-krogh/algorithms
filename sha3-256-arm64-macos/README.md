@@ -110,13 +110,13 @@ reference time divided by assembly time, so values above 1.0 mean the
 assembly implementation is faster.
 
 ```text
-  size(B)     iters     asm(ms)     asm h/s    asm MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s  asm/CryptoKit   asm/OpenSSL
-        0    200000       29.88     6692600         0.00           86.57        2310319              0.00         44.50        4494803             0.00          2.90x         1.49x
-       64    200000       31.14     6423123       392.04           87.38        2288957            139.71         45.63        4383342           267.54          2.81x         1.47x
-     1024     50000       59.04      846839       826.99           78.15         639828            624.83         62.92         794599           775.98          1.32x         1.07x
-    16384     10000      177.60       56306       879.78          197.85          50544            789.74        179.50          55709           870.46          1.11x         1.01x
-   262144      1000      282.85        3535       883.86          310.08           3225            806.24        285.13           3507           876.80          1.10x         1.01x
-  1048576       300      339.72         883       883.08          371.59            807            807.35        342.05            877           877.08          1.09x         1.01x
- 10485760        30      340.06          88       882.19          372.22             81            805.98        342.56             88           875.75          1.09x         1.01x
-worst repetition spread: asm 1.5%, CryptoKit 1.8%, OpenSSL 2.0%
+  size(B)     iters   sha3-256-arm64-macos(ms)   sha3-256-arm64-macos h/s   sha3-256-arm64-macos MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s   sha3-256-arm64-macos/CryptoKit   sha3-256-arm64-macos/OpenSSL
+        0    200000                      29.98                    6670419                         0.00           87.90        2275210              0.00         44.73        4471231             0.00                            2.93x                          1.49x
+       64    200000                      31.75                    6299998                       384.52           88.01        2272464            138.70         45.85        4361793           266.22                            2.77x                          1.44x
+     1024     50000                      59.20                     844636                       824.84           78.58         636264            621.35         63.35         789245           770.75                            1.33x                          1.07x
+    16384     10000                     178.66                      55973                       874.58          198.00          50505            789.14        180.83          55300           864.06                            1.11x                          1.01x
+   262144      1000                     285.27                       3505                       876.35          312.19           3203            800.80        286.72           3488           871.93                            1.09x                          1.01x
+  1048576       300                     341.40                        879                       878.75          375.42            799            799.10        344.43            871           870.99                            1.10x                          1.01x
+ 10485760        30                     342.25                         88                       876.54          374.59             80            800.87        344.53             87           870.76                            1.09x                          1.01x
+worst repetition spread: sha3-256-arm64-macos 2.5%, CryptoKit 3.0%, OpenSSL 3.2%
 ```

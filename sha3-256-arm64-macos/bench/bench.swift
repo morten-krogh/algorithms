@@ -22,17 +22,17 @@ private let runs = [
 private let columns: [(header: String, width: Int)] = [
 	("size(B)", 9),
 	("iters", 8),
-	("asm(ms)", 10),
-	("asm h/s", 10),
-	("asm MiB/s", 11),
+	("sha3-256-arm64-macos(ms)", 25),
+	("sha3-256-arm64-macos h/s", 25),
+	("sha3-256-arm64-macos MiB/s", 27),
 	("CryptoKit(ms)", 14),
 	("CryptoKit h/s", 13),
 	("CryptoKit MiB/s", 16),
 	("OpenSSL(ms)", 12),
 	("OpenSSL h/s", 13),
 	("OpenSSL MiB/s", 15),
-	("asm/CryptoKit", 13),
-	("asm/OpenSSL", 12),
+	("sha3-256-arm64-macos/CryptoKit", 31),
+	("sha3-256-arm64-macos/OpenSSL", 29),
 ]
 
 private struct Metrics {
@@ -245,7 +245,7 @@ private struct Benchmark {
 		}
 
 		print(String(
-			format: "worst repetition spread: asm %.1f%%, CryptoKit %.1f%%, OpenSSL %.1f%%",
+			format: "worst repetition spread: sha3-256-arm64-macos %.1f%%, CryptoKit %.1f%%, OpenSSL %.1f%%",
 			worstSpreads[0] * 100, worstSpreads[1] * 100, worstSpreads[2] * 100
 		))
 	}

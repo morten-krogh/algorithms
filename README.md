@@ -55,18 +55,18 @@ dependency-free JavaScript wrapper. See [sha3-256-wasm/](sha3-256-wasm/) for the
 `node bench/bench.js` compares this WebAssembly implementation against Node's native
 `node:crypto` SHA3-256 and the [hash-wasm](https://www.npmjs.com/package/hash-wasm) library
 over a range of message sizes. The run below was measured on an **Apple M1 Max**
-(`wasm/node` and `wasm/hash-wasm` = reference time / wasm time, so above 1.0 means this
-WebAssembly implementation is faster):
+(`sha3-256-wasm/node` and `sha3-256-wasm/hash-wasm` = reference time / sha3-256-wasm time, so
+above 1.0 means this WebAssembly implementation is faster):
 
 ```
-  size(B)     iters    wasm(ms)    wasm h/s   wasm MiB/s    node(ms)     node h/s   node MiB/s   hash-wasm(ms)   hash-wasm h/s   hash-wasm MiB/s   wasm/node   wasm/hash-wasm
-        0    200000       74.07     2700042         0.00      182.73      1094523         0.00           82.34         2429024              0.00       2.47x            1.11x
-       64    200000       81.21     2462828       150.32      182.93      1093289        66.73           94.63         2113437            128.99       2.25x            1.17x
-     1024     50000       99.12      504422       492.60       97.03       515286       503.21          113.10          442101            431.74       0.98x            1.14x
-    16384     10000      261.37       38260       597.81      190.52        52488       820.13          310.61           32194            503.04       0.73x            1.19x
-   262144      1000      418.69        2388       597.10      288.56         3465       866.36          494.48            2022            505.58       0.69x            1.18x
-  1048576       300      505.01         594       594.05      347.33          864       863.73          599.49             500            500.43       0.69x            1.19x
- 10485760        30      503.27          60       596.10      346.68           87       865.34          593.84              51            505.19       0.69x            1.18x
+  size(B)     iters   sha3-256-wasm(ms)   sha3-256-wasm h/s   sha3-256-wasm MiB/s    node(ms)     node h/s   node MiB/s   hash-wasm(ms)   hash-wasm h/s   hash-wasm MiB/s   sha3-256-wasm/node   sha3-256-wasm/hash-wasm
+        0    200000               73.45             2723009                  0.00      182.63      1095127         0.00           80.78         2475890              0.00                2.49x                     1.10x
+       64    200000               80.98             2469827                150.75      178.60      1119791        68.35           95.33         2098078            128.06                2.21x                     1.18x
+     1024     50000               99.30              503520                491.72       98.20       509170       497.24          113.92          438904            428.62                0.99x                     1.15x
+    16384     10000              261.91               38180                596.57      188.61        53021       828.45          310.68           32188            502.94                0.72x                     1.19x
+   262144      1000              418.38                2390                597.55      289.98         3448       862.12          495.47            2018            504.58                0.69x                     1.18x
+  1048576       300              503.79                 595                595.49      347.27          864       863.87          593.14             506            505.78                0.69x                     1.18x
+ 10485760        30              502.25                  60                597.32      346.39           87       866.08          592.40              51            506.41                0.69x                     1.18x
 ```
 
 For small messages the WebAssembly implementation wins (roughly 2×) because it avoids per-call
@@ -84,18 +84,18 @@ dependency-free JavaScript wrapper. See [sha3-512-wasm/](sha3-512-wasm/) for the
 `node bench/bench.js` compares this WebAssembly implementation against Node's native
 `node:crypto` SHA3-512 and the [hash-wasm](https://www.npmjs.com/package/hash-wasm) library
 over a range of message sizes. The run below was measured on an **Apple M1 Max**
-(`wasm/node` and `wasm/hash-wasm` = reference time / wasm time, so above 1.0 means this
-WebAssembly implementation is faster):
+(`sha3-512-wasm/node` and `sha3-512-wasm/hash-wasm` = reference time / sha3-512-wasm time, so
+above 1.0 means this WebAssembly implementation is faster):
 
 ```
-  size(B)     iters    wasm(ms)    wasm h/s   wasm MiB/s    node(ms)     node h/s   node MiB/s   hash-wasm(ms)   hash-wasm h/s   hash-wasm MiB/s   wasm/node   wasm/hash-wasm
-        0    200000       73.74     2712350         0.00      182.86      1093734         0.00           78.05         2562583              0.00       2.48x            1.06x
-       64    200000       79.50     2515827       153.55      176.06      1135983        69.33           90.65         2206276            134.66       2.21x            1.14x
-     1024     50000      174.47      286583       279.87      149.49       334470       326.63          200.30          249625            243.77       0.86x            1.15x
-    16384     10000      488.47       20472       319.88      347.98        28737       449.02          579.06           17269            269.83       0.71x            1.19x
-   262144      1000      789.42        1267       316.69      545.93         1832       457.94          927.19            1079            269.63       0.69x            1.17x
-  1048576       300      942.71         318       318.23      664.96          451       451.15         1122.28             267            267.31       0.71x            1.19x
- 10485760        30      944.74          32       317.55      651.06           46       460.79         1111.98              27            269.79       0.69x            1.18x
+  size(B)     iters   sha3-512-wasm(ms)   sha3-512-wasm h/s   sha3-512-wasm MiB/s    node(ms)     node h/s   node MiB/s   hash-wasm(ms)   hash-wasm h/s   hash-wasm MiB/s   sha3-512-wasm/node   sha3-512-wasm/hash-wasm
+        0    200000               72.20             2770246                  0.00      180.89      1105624         0.00           77.74         2572725              0.00                2.51x                     1.08x
+       64    200000               79.20             2525094                154.12      177.21      1128603        68.88           91.15         2194249            133.93                2.24x                     1.15x
+     1024     50000              174.76              286099                279.39      148.93       335735       327.87          199.70          250381            244.51                0.85x                     1.14x
+    16384     10000              488.08               20488                320.13      344.43        29033       453.65          577.72           17310            270.46                0.71x                     1.18x
+   262144      1000              787.36                1270                317.52      545.10         1835       458.63          928.67            1077            269.20                0.69x                     1.18x
+  1048576       300              941.71                 319                318.57      651.04          461       460.80         1118.13             268            268.30                0.69x                     1.19x
+ 10485760        30              940.88                  32                318.85      650.19           46       461.40         1126.55              27            266.30                0.69x                     1.20x
 ```
 
 For small messages the WebAssembly implementation wins (roughly 2×) because it avoids per-call
@@ -113,18 +113,18 @@ Keccak-p[1600] permutation with a dependency-free JavaScript wrapper. See
 
 `node bench/bench.js` compares this WebAssembly implementation against Node's native
 `node:crypto` SHAKE256 over a range of message sizes, squeezing a 32-byte output per call. The
-run below was measured on an **Apple M1 Max** (`wasm/node performance` = node time / wasm time,
+run below was measured on an **Apple M1 Max** (`shake-256-wasm/node` = node time / shake-256-wasm time,
 so above 1.0 means the WebAssembly implementation is faster):
 
 ```
-  size(B)     iters    wasm(ms)    wasm h/s   wasm MiB/s    node(ms)     node h/s   node MiB/s  wasm/node performance
-        0    200000      116.33     1719301         0.00      172.90      1156750         0.00                  1.49x
-       64    200000      122.50     1632664        99.65      172.20      1161433        70.89                  1.41x
-     1024     50000      112.41      444794       434.37       94.41       529619       517.21                  0.84x
-    16384     10000      267.23       37421       584.71      186.20        53705       839.15                  0.70x
-   262144      1000      423.79        2360       589.92      287.37         3480       869.95                  0.68x
-  1048576       300      508.76         590       589.67      343.18          874       874.19                  0.67x
- 10485760        30      508.01         59       590.54      343.93           87       872.28                  0.68x
+  size(B)     iters   shake-256-wasm(ms)   shake-256-wasm h/s   shake-256-wasm MiB/s    node(ms)     node h/s   node MiB/s   shake-256-wasm/node
+        0    200000               118.80              1683562                   0.00      183.56      1089563         0.00                 1.55x
+       64    200000               127.32              1570821                  95.88      183.29      1091183        66.60                 1.44x
+     1024     50000               114.22               437744                 427.48       98.94       505347       493.50                 0.87x
+    16384     10000               272.42                36707                 573.55      189.62        52738       824.03                 0.70x
+   262144      1000               429.66                 2327                 581.85      290.15         3446       861.62                 0.68x
+  1048576       300               519.61                  577                 577.36      347.53          863       863.23                 0.67x
+ 10485760        30               515.25                   58                 582.24      346.09           87       866.82                 0.67x
 ```
 
 For small messages the WebAssembly implementation wins (roughly 1.4×) because it avoids per-call
@@ -140,16 +140,16 @@ a dependency-free JavaScript wrapper. See [philox-4x32-wasm/](philox-4x32-wasm/)
 
 `node bench/bench.js` compares this WebAssembly implementation against a pure JavaScript
 Philox4x32-10 reference over a range of output block counts. The run below was measured locally
-(`wasm/js performance` = JS time / wasm time, so above 1.0 means the WebAssembly implementation is
-faster):
+(`philox-4x32-wasm/js` = JS time / philox-4x32-wasm time, so above 1.0 means the WebAssembly
+implementation is faster):
 
 ```
-   blocks     iters    wasm(ms)  wasm blocks/s   wasm MiB/s      js(ms)   js blocks/s    js MiB/s  wasm/js performance
-        1    200000       12.15       16460116       251.16       30.79       6494754       99.10                2.53x
-       16     50000       11.55       69275819      1057.07       97.64       8193608      125.02                8.45x
-     1024      1000       11.29       90735562      1384.51      121.39       8435647      128.72               10.76x
-    16384       100       17.81       91997353      1403.77      236.93       6915072      105.52               13.30x
-   262144        10       29.06       90216771      1376.60      384.47       6818252      104.04               13.23x
+   blocks     iters   philox-4x32-wasm(ms)   philox-4x32-wasm blocks/s   philox-4x32-wasm MiB/s      js(ms)   js blocks/s    js MiB/s   philox-4x32-wasm/js
+        1    200000                  12.07                    16574012                   252.90       30.53       6550058       99.95                 2.53x
+       16     50000                  11.05                    72421680                  1105.07       97.72       8186834      124.92                 8.85x
+     1024      1000                  11.33                    90403126                  1379.44      122.76       8341536      127.28                10.84x
+    16384       100                  17.84                    91856375                  1401.62      237.23       6906306      105.38                13.30x
+   262144        10                  29.19                    89793280                  1370.14      383.32       6838713      104.35                13.13x
 ```
 
 The WebAssembly implementation is faster across the benchmark range, with the largest gains on bulk
@@ -168,14 +168,15 @@ run below was measured on an **Apple M1 Max**. Ratios are reference time / assem
 1.0 means the assembly implementation is faster:
 
 ```text
-  size(B)     iters     asm(ms)     asm h/s    asm MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s  asm/CryptoKit   asm/OpenSSL
-        0    200000       32.27     6197411         0.00           87.41        2288184              0.00         44.90        4453946             0.00          2.71x         1.39x
-       64    200000       31.43     6362790       388.35           88.35        2263684            138.16         45.73        4373684           266.95          2.81x         1.45x
-     1024     50000       59.57      839382       819.71           78.82         634369            619.50         63.53         787032           768.59          1.32x         1.07x
-    16384     10000      179.26       55784       871.62          198.61          50349            786.71        181.46          55110           861.09          1.11x         1.01x
-   262144      1000      285.22        3506       876.52          311.40           3211            802.83        287.46           3479           869.68          1.09x         1.01x
-  1048576       300      342.35         876       876.31          374.75            801            800.54        345.77            868           867.62          1.09x         1.01x
- 10485760        30      342.86          87       874.99          374.57             80            800.92        344.97             87           869.65          1.09x         1.01x
+  size(B)     iters   sha3-256-arm64-macos(ms)   sha3-256-arm64-macos h/s   sha3-256-arm64-macos MiB/s   CryptoKit(ms)  CryptoKit h/s   CryptoKit MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s   sha3-256-arm64-macos/CryptoKit   sha3-256-arm64-macos/OpenSSL
+        0    200000                      29.98                    6670419                         0.00           87.90        2275210              0.00         44.73        4471231             0.00                            2.93x                          1.49x
+       64    200000                      31.75                    6299998                       384.52           88.01        2272464            138.70         45.85        4361793           266.22                            2.77x                          1.44x
+     1024     50000                      59.20                     844636                       824.84           78.58         636264            621.35         63.35         789245           770.75                            1.33x                          1.07x
+    16384     10000                     178.66                      55973                       874.58          198.00          50505            789.14        180.83          55300           864.06                            1.11x                          1.01x
+   262144      1000                     285.27                       3505                       876.35          312.19           3203            800.80        286.72           3488           871.93                            1.09x                          1.01x
+  1048576       300                     341.40                        879                       878.75          375.42            799            799.10        344.43            871           870.99                            1.10x                          1.01x
+ 10485760        30                     342.25                         88                       876.54          374.59             80            800.87        344.53             87           870.76                            1.09x                          1.01x
+worst repetition spread: sha3-256-arm64-macos 2.5%, CryptoKit 3.0%, OpenSSL 3.2%
 ```
 
 ## sha3-256-x86_64-linux
@@ -195,14 +196,14 @@ two vCPUs). Ratios are reference time / assembly time, so above 1.0 means the
 assembly implementation is faster:
 
 ```text
-  size(B)     iters     asm(ms)     asm h/s    asm MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s   gcrypt(ms)    gcrypt h/s    gcrypt MiB/s   asm/OpenSSL   asm/gcrypt
-        0    200000       38.55     5187564         0.00         79.59        2512968             0.00        43.89       4556926            0.00         2.06x        1.14x
-       64    200000       41.12     4863426       296.84         53.08        3768064           229.98        46.73       4279651          261.21         1.29x        1.14x
-     1024     50000       75.52      662038       646.52         88.10         567524           554.22        72.62        688483          672.35         1.17x        0.96x
-    16384     10000      215.95       46306       723.53        275.20          36337           567.76       215.82         46335          723.98         1.27x        1.00x
-   262144      1000      344.36        2904       725.98        420.48           2378           594.56       346.01          2890          722.53         1.22x        1.00x
-  1048576       300      407.46         736       736.27        523.89            573           572.63       411.01           730          729.90         1.29x        1.01x
- 10485760        30      416.25          72       720.71        496.64             60           604.06       418.38            72          717.05         1.19x        1.01x
-worst repetition spread: asm 9.5%, OpenSSL 30.5%, gcrypt 16.7%
+  size(B)     iters   sha3-256-x86_64-linux(ms)   sha3-256-x86_64-linux h/s   sha3-256-x86_64-linux MiB/s   OpenSSL(ms)    OpenSSL h/s    OpenSSL MiB/s   gcrypt(ms)    gcrypt h/s    gcrypt MiB/s   sha3-256-x86_64-linux/OpenSSL   sha3-256-x86_64-linux/gcrypt
+        0    200000                       38.55                     5187564                          0.00         79.59        2512968             0.00        43.89       4556926            0.00                           2.06x                          1.14x
+       64    200000                       41.12                     4863426                        296.84         53.08        3768064           229.98        46.73       4279651          261.21                           1.29x                          1.14x
+     1024     50000                       75.52                      662038                        646.52         88.10         567524           554.22        72.62        688483          672.35                           1.17x                          0.96x
+    16384     10000                      215.95                       46306                        723.53        275.20          36337           567.76       215.82         46335          723.98                           1.27x                          1.00x
+   262144      1000                      344.36                        2904                        725.98        420.48           2378           594.56       346.01          2890          722.53                           1.22x                          1.00x
+  1048576       300                      407.46                         736                        736.27        523.89            573           572.63       411.01           730          729.90                           1.29x                          1.01x
+ 10485760        30                      416.25                          72                        720.71        496.64             60           604.06       418.38            72          717.05                           1.19x                          1.01x
+worst repetition spread: sha3-256-x86_64-linux 9.5%, OpenSSL 30.5%, gcrypt 16.7%
 ```
 

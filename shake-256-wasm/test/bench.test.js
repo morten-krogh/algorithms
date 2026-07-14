@@ -40,9 +40,9 @@ test("bench prints a table header", async (_t) => {
 	assert.equal(result.code, 0);
 	assert.equal(result.stderr, "");
 	assert.match(result.stdout, /size\(B\)/);
-	assert.match(result.stdout, /wasm MiB\/s/);
+	assert.match(result.stdout, /shake-256-wasm MiB\/s/);
 	assert.match(result.stdout, /node MiB\/s/);
-	assert.match(result.stdout, /wasm\/node performance/);
+	assert.match(result.stdout, /shake-256-wasm\/node/);
 });
 
 test("bench prints one numeric row per message size", async (_t) => {

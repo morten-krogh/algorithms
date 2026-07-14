@@ -32,13 +32,13 @@ const RUNS = [
 const COLUMNS = [
 	{ header: "size(B)", width: 9 },
 	{ header: "iters", width: 8 },
-	{ header: "wasm(ms)", width: 10 },
-	{ header: "wasm h/s", width: 10 },
-	{ header: "wasm MiB/s", width: 11 },
+	{ header: "shake-256-wasm(ms)", width: 19 },
+	{ header: "shake-256-wasm h/s", width: 19 },
+	{ header: "shake-256-wasm MiB/s", width: 21 },
 	{ header: "node(ms)", width: 10 },
 	{ header: "node h/s", width: 11 },
 	{ header: "node MiB/s", width: 11 },
-	{ header: "wasm/node performance", width: 21 },
+	{ header: "shake-256-wasm/node", width: 20 },
 ];
 
 /**

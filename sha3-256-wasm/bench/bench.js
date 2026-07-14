@@ -30,17 +30,17 @@ const RUNS = [
 const COLUMNS = [
 	{ header: "size(B)", width: 9 },
 	{ header: "iters", width: 8 },
-	{ header: "wasm(ms)", width: 10 },
-	{ header: "wasm h/s", width: 10 },
-	{ header: "wasm MiB/s", width: 11 },
+	{ header: "sha3-256-wasm(ms)", width: 18 },
+	{ header: "sha3-256-wasm h/s", width: 18 },
+	{ header: "sha3-256-wasm MiB/s", width: 20 },
 	{ header: "node(ms)", width: 10 },
 	{ header: "node h/s", width: 11 },
 	{ header: "node MiB/s", width: 11 },
 	{ header: "hash-wasm(ms)", width: 14 },
 	{ header: "hash-wasm h/s", width: 14 },
 	{ header: "hash-wasm MiB/s", width: 16 },
-	{ header: "wasm/node", width: 10 },
-	{ header: "wasm/hash-wasm", width: 15 },
+	{ header: "sha3-256-wasm/node", width: 19 },
+	{ header: "sha3-256-wasm/hash-wasm", width: 24 },
 ];
 
 /**
