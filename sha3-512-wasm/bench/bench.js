@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
+import { createSHA3 } from "hash-wasm";
 import { Sha3_512 } from "../lib/sha3-512.js";
 
 const MESSAGE_BYTE = 0xa3;
@@ -35,7 +36,11 @@ const COLUMNS = [
 	{ header: "node(ms)", width: 10 },
 	{ header: "node h/s", width: 11 },
 	{ header: "node MiB/s", width: 11 },
-	{ header: "wasm/node performance", width: 21 },
+	{ header: "hash-wasm(ms)", width: 14 },
+	{ header: "hash-wasm h/s", width: 14 },
+	{ header: "hash-wasm MiB/s", width: 16 },
+	{ header: "wasm/node", width: 10 },
+	{ header: "wasm/hash-wasm", width: 15 },
 ];
 
 /**
@@ -89,16 +94,21 @@ function metrics(elapsed_ms, run) {
 
 /**
  * @param {Sha3_512} sha3
+ * @param {import("hash-wasm").IHasher} hash_wasm
  * @param {{ size: number, iterations: number }} run
  * @returns {string}
  */
-function bench_row(sha3, run) {
+function bench_row(sha3, hash_wasm, run) {
 	const message = new Uint8Array(run.size).fill(MESSAGE_BYTE);
 
-	// Sanity check: both implementations must agree before we compare speeds.
+	// Sanity check: all implementations must agree before we compare speeds.
 	const wasm_digest = sha3.reset().update(message).digest();
 	const node_digest = createHash("sha3-512").update(message).digest();
-	if (!Buffer.from(wasm_digest).equals(node_digest)) {
+	const hash_wasm_digest = hash_wasm.init().update(message).digest("binary");
+	if (
+		!Buffer.from(wasm_digest).equals(node_digest) ||
+		!Buffer.from(wasm_digest).equals(hash_wasm_digest)
+	) {
 		console.error(`digest mismatch at size ${run.size}`);
 		process.exit(1);
 	}
@@ -117,6 +127,13 @@ function bench_row(sha3, run) {
 		),
 		run,
 	);
+	const hwasm = metrics(
+		time_iterations(
+			() => hash_wasm.init().update(message).digest("binary"),
+			run.iterations,
+		),
+		run,
+	);
 
 	return format_row([
 		String(run.size),
@@ -127,7 +144,11 @@ function bench_row(sha3, run) {
 		node.ms,
 		node.hashes,
 		node.mib,
+		hwasm.ms,
+		hwasm.hashes,
+		hwasm.mib,
 		`${(node.ms_value / wasm.ms_value).toFixed(2)}x`,
+		`${(hwasm.ms_value / wasm.ms_value).toFixed(2)}x`,
 	]);
 }
 
@@ -136,8 +157,9 @@ const wasm_bytes = await readFile(
 );
 const wasm_module = await WebAssembly.compile(wasm_bytes);
 const sha3 = await new Sha3_512().initialize(wasm_module);
+const hash_wasm = await createSHA3(512);
 
 console.log(format_row(COLUMNS.map((column) => column.header)));
 for (const run of RUNS) {
-	console.log(bench_row(sha3, run));
+	console.log(bench_row(sha3, hash_wasm, run));
 }

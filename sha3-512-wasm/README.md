@@ -126,9 +126,11 @@ The tool accepts no operands, reads stdin to end-of-file, and is binary safe.
 node bench/bench.js
 ```
 
-Prints a table comparing this implementation with `node:crypto` over several message sizes
-(columns: `size(B)`, `iters`, `wasm(ms)`, `wasm h/s`, `wasm MiB/s`, `node(ms)`, `node h/s`,
-`node MiB/s`, `speedup`). Each row is also cross-checked for digest equality before timing.
+Prints a table comparing this implementation with `node:crypto` and
+[hash-wasm](https://www.npmjs.com/package/hash-wasm) over several message sizes (columns:
+`size(B)`, `iters`, then `ms`/`h/s`/`MiB/s` for each implementation, and the `wasm/node` and
+`wasm/hash-wasm` time ratios). Each row is also cross-checked for digest equality across all
+three implementations before timing.
 
 # API
 

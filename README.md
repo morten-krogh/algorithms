@@ -53,24 +53,26 @@ dependency-free JavaScript wrapper. See [sha3-256-wasm/](sha3-256-wasm/) for the
 ### Benchmark
 
 `node bench/bench.js` compares this WebAssembly implementation against Node's native
-`node:crypto` SHA3-256 over a range of message sizes. The run below was measured on an
-**Apple M1 Max** (`wasm/node performance` = node time / wasm time, so above 1.0 means the
+`node:crypto` SHA3-256 and the [hash-wasm](https://www.npmjs.com/package/hash-wasm) library
+over a range of message sizes. The run below was measured on an **Apple M1 Max**
+(`wasm/node` and `wasm/hash-wasm` = reference time / wasm time, so above 1.0 means this
 WebAssembly implementation is faster):
 
 ```
-  size(B)     iters    wasm(ms)    wasm h/s   wasm MiB/s    node(ms)     node h/s   node MiB/s  wasm/node performance
-        0    200000       73.69     2714145         0.00      182.06      1098551         0.00                  2.47x
-       64    200000       79.43     2518035       153.69      175.97      1136528        69.37                  2.22x
-     1024     50000       98.81      506000       494.14       95.59       523043       510.78                  0.97x
-    16384     10000      259.91       38475       601.16      186.84        53521       836.27                  0.72x
-   262144      1000      415.10        2409       602.26      287.64         3477       869.13                  0.69x
-  1048576       300      498.40         602       601.93      343.45          873       873.50                  0.69x
- 10485760        30      498.78          60       601.46      346.24           87       866.44                  0.69x
+  size(B)     iters    wasm(ms)    wasm h/s   wasm MiB/s    node(ms)     node h/s   node MiB/s   hash-wasm(ms)   hash-wasm h/s   hash-wasm MiB/s   wasm/node   wasm/hash-wasm
+        0    200000       74.07     2700042         0.00      182.73      1094523         0.00           82.34         2429024              0.00       2.47x            1.11x
+       64    200000       81.21     2462828       150.32      182.93      1093289        66.73           94.63         2113437            128.99       2.25x            1.17x
+     1024     50000       99.12      504422       492.60       97.03       515286       503.21          113.10          442101            431.74       0.98x            1.14x
+    16384     10000      261.37       38260       597.81      190.52        52488       820.13          310.61           32194            503.04       0.73x            1.19x
+   262144      1000      418.69        2388       597.10      288.56         3465       866.36          494.48            2022            505.58       0.69x            1.18x
+  1048576       300      505.01         594       594.05      347.33          864       863.73          599.49             500            500.43       0.69x            1.19x
+ 10485760        30      503.27          60       596.10      346.68           87       865.34          593.84              51            505.19       0.69x            1.18x
 ```
 
 For small messages the WebAssembly implementation wins (roughly 2×) because it avoids per-call
 object allocation; for large messages Node's native OpenSSL SHA3-256 pulls ahead, leaving the
-WebAssembly implementation at about 0.7×.
+WebAssembly implementation at about 0.7×. hash-wasm's hand-tuned SHA-3 trails this
+implementation at every size (1.1–1.2×).
 
 ## sha3-512-wasm
 
@@ -80,24 +82,26 @@ dependency-free JavaScript wrapper. See [sha3-512-wasm/](sha3-512-wasm/) for the
 ### Benchmark
 
 `node bench/bench.js` compares this WebAssembly implementation against Node's native
-`node:crypto` SHA3-512 over a range of message sizes. The run below was measured on an
-**Apple M1 Max** (`wasm/node performance` = node time / wasm time, so above 1.0 means the
+`node:crypto` SHA3-512 and the [hash-wasm](https://www.npmjs.com/package/hash-wasm) library
+over a range of message sizes. The run below was measured on an **Apple M1 Max**
+(`wasm/node` and `wasm/hash-wasm` = reference time / wasm time, so above 1.0 means this
 WebAssembly implementation is faster):
 
 ```
-  size(B)     iters    wasm(ms)    wasm h/s   wasm MiB/s    node(ms)     node h/s   node MiB/s  wasm/node performance
-        0    200000       71.38     2801897         0.00      174.01      1149356         0.00                  2.44x
-       64    200000       78.90     2534933       154.72      171.23      1168007        71.29                  2.17x
-     1024     50000      173.11      288826       282.06      146.48       341348       333.35                  0.85x
-    16384     10000      483.08       20701       323.45      343.43        29118       454.96                  0.71x
-   262144      1000      779.01        1284       320.92      538.30         1858       464.43                  0.69x
-  1048576       300      933.82         321       321.26      644.69          465       465.34                  0.69x
- 10485760        30      933.36         32       321.42      644.30           47       465.62                  0.69x
+  size(B)     iters    wasm(ms)    wasm h/s   wasm MiB/s    node(ms)     node h/s   node MiB/s   hash-wasm(ms)   hash-wasm h/s   hash-wasm MiB/s   wasm/node   wasm/hash-wasm
+        0    200000       73.74     2712350         0.00      182.86      1093734         0.00           78.05         2562583              0.00       2.48x            1.06x
+       64    200000       79.50     2515827       153.55      176.06      1135983        69.33           90.65         2206276            134.66       2.21x            1.14x
+     1024     50000      174.47      286583       279.87      149.49       334470       326.63          200.30          249625            243.77       0.86x            1.15x
+    16384     10000      488.47       20472       319.88      347.98        28737       449.02          579.06           17269            269.83       0.71x            1.19x
+   262144      1000      789.42        1267       316.69      545.93         1832       457.94          927.19            1079            269.63       0.69x            1.17x
+  1048576       300      942.71         318       318.23      664.96          451       451.15         1122.28             267            267.31       0.71x            1.19x
+ 10485760        30      944.74          32       317.55      651.06           46       460.79         1111.98              27            269.79       0.69x            1.18x
 ```
 
 For small messages the WebAssembly implementation wins (roughly 2×) because it avoids per-call
 object allocation; for large messages Node's native OpenSSL SHA3-512 pulls ahead, leaving the
-WebAssembly implementation at about 0.7×.
+WebAssembly implementation at about 0.7×. hash-wasm's hand-tuned SHA-3 trails this
+implementation at every size (1.1–1.2×).
 
 ## shake-256-wasm
 
