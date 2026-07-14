@@ -108,12 +108,17 @@ console.log(digest);
 
 ## Command line
 
+The command hashes standard input and writes a lowercase 128-character digest
+followed by a newline:
+
 ```sh
-node bin/sha3-512.js abc        # or: npx sha3-512 abc
+printf abc | node bin/sha3-512.js        # or: printf abc | npx sha3-512
 # b751850b...ec53f0
+
+node bin/sha3-512.js < file.dat
 ```
 
-Usage: `sha3-512 <message>` — prints the lowercase hex digest of the single message argument.
+The tool accepts no operands, reads stdin to end-of-file, and is binary safe.
 
 ## Benchmark
 

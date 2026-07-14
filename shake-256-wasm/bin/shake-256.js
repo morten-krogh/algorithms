@@ -13,15 +13,14 @@ function hex_from_bytes(bytes) {
 	);
 }
 
-const [message, lengthArg, ...rest] = process.argv.slice(2);
+const [lengthArg, ...rest] = process.argv.slice(2);
 if (
-	message === undefined ||
 	lengthArg === undefined ||
 	rest.length > 0 ||
 	!/^(0|[1-9][0-9]*)$/.test(lengthArg) ||
 	!Number.isSafeInteger(Number(lengthArg))
 ) {
-	console.error("Usage: shake-256 <message> <output-bytes>");
+	console.error("Usage: shake-256 <output-bytes> < input");
 	process.exit(1);
 }
 const outputBytes = Number(lengthArg);
@@ -31,7 +30,12 @@ const wasm_bytes = await readFile(
 );
 const wasm_module = await WebAssembly.compile(wasm_bytes);
 const shake = await new Shake256().initialize(wasm_module);
-const digest = shake
-	.update(new TextEncoder().encode(message))
-	.digest(outputBytes);
-console.log(hex_from_bytes(digest));
+try {
+	for await (const chunk of process.stdin) {
+		shake.update(chunk);
+	}
+} catch {
+	console.error("shake-256: failed to read stdin");
+	process.exit(1);
+}
+console.log(hex_from_bytes(shake.digest(outputBytes)));
