@@ -55,6 +55,9 @@ cmp "$WORK/first" "$WORK/restored"
 cmp "$WORK/second" "$WORK/restored"
 
 printf tiny >"$WORK/tiny"
+"$CLI" -q4 -w0 -c "$WORK/tiny" >"$WORK/window.br"
+first_byte=$(od -An -tu1 -N1 "$WORK/window.br")
+test $((first_byte & 127)) -eq 33
 (cd "$WORK" && "$CLI" -0sj tiny)
 test -f "$WORK/tiny"
 test ! -e "$WORK/tiny.br"

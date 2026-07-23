@@ -96,6 +96,7 @@ help_text:
         db "  -t, --test                  test compressed file integrity", 10
         db "  -v, --verbose               report processed files", 10
         db "  -w NUM, --lgwin=NUM         LZ77 window bits (0 or 10-24)", 10
+        db "                              0 chooses from the input size", 10
         db "  -S SUF, --suffix=SUF        output suffix (default: '.br')", 10
         db "  -V, --version               display version and exit", 10
         db "  -Z, --best                  use compression level 11 (default)", 10
@@ -194,7 +195,7 @@ global _start:function
 
 _start:
         mov     dword [quality], 11
-        mov     dword [lgwin], 22
+        mov     dword [lgwin], 0
         mov     qword [suffix_pointer], default_suffix
         mov     qword [suffix_length], 3
 
@@ -337,7 +338,7 @@ _start:
         mov     [lgwin], eax
         jmp     .next_argument
 .lgwin_default:
-        mov     dword [lgwin], 22
+        mov     dword [lgwin], 0
         jmp     .next_argument
 .long_output:
         call    obtain_value
@@ -551,7 +552,7 @@ _start:
         mov     [lgwin], eax
         jmp     .next_argument
 .short_lgwin_default:
-        mov     dword [lgwin], 22
+        mov     dword [lgwin], 0
         jmp     .next_argument
 .short_output:
         call    short_value
@@ -1091,6 +1092,31 @@ run_job:
         mov     eax, [quality]
         mov     [codec_options], eax
         mov     eax, [lgwin]
+.select_window:
+        test    eax, eax
+        jnz     .store_window
+        mov     eax, 24
+        cmp     dword [input_fd], 0
+        je      .store_window
+        mov     edx, [input_stat+24]
+        and     edx, 0170000O
+        cmp     edx, 0100000O
+        jne     .store_window
+        mov     rdx, [input_stat+48]
+        test    rdx, rdx
+        js      .store_window
+        mov     eax, 10
+.window_loop:
+        mov     ecx, eax
+        mov     r8d, 1
+        shl     r8, cl
+        sub     r8, 16
+        cmp     r8, rdx
+        jae     .store_window
+        inc     eax
+        cmp     eax, 24
+        jb      .window_loop
+.store_window:
         mov     [codec_options+4], eax
         mov     eax, [mode]
         mov     [codec_options+8], eax

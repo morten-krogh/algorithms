@@ -65,6 +65,9 @@ equivalent to `-9 -k -f`.
 Named output is written to a temporary sibling and atomically renamed only
 after successful completion. Existing output is preserved unless `-f` is
 used, and a source is removed only after useful output has been committed.
+The default window, and explicit `-w0`, select the smallest RFC window that
+can cover a named input; stdin uses the 24-bit default because its total size
+is unknown.
 Large-window streams, custom dictionaries, comments, and concatenated streams
 are outside this implementation's command-line scope.
 
@@ -119,9 +122,13 @@ measurement-sensitive.
 
 On the AMD EPYC 9575F development host, sustained mixed-corpus throughput is
 generally within a few percent of the distribution's native Brotli 1.2.0
-library. Repetitive-text encoding is about 1.5x native at q4, 2x at q6, and
-slightly faster at q11; incompressible q4 remains the limiting case at about
-0.90x. These figures are workload- and host-dependent.
+library. With corrected Brotli 1.2 parameter IDs, representative mixed-corpus
+encoding ratios are about 1.06x at q0, 0.94x at q4, 1.00x at q6, and 1.05x
+at q11; aggregate decoding is about 1.00x. Repetitive-text q11 is about 1.47x,
+while q4 incompressible data remains the limiting case at about 0.90x. On the
+checked-in `src/brotli_upstream.inc`, default q11 compression is approximately
+even with the distribution CLI in both throughput and output size. These
+figures are workload- and host-dependent.
 
 The encoder confirms 16 bytes scalarly before entering an out-of-line
 AVX-512 prefix matcher, keeping hash misses compact while comparing long
@@ -133,7 +140,9 @@ input. The handwritten runtime uses exact-width scalar/SSE operations for
 small copies, AVX-512 for medium copies, and ERMS for copy/fill operations of
 at least 2 KiB. Whole-program O3/vector scheduling and several broader
 decoder rewrites were measured and rejected; the checked-in decoder retains
-the faster O2 symbolic control flow.
+the faster O2 symbolic control flow. The q11 backward-reference unit alone is
+translated at generic O3, a measured real-file win without retargeting the
+decoder.
 
 ## Regeneration and provenance
 
@@ -150,9 +159,11 @@ python3 tools/generate-upstream-asm.py \
 The generator verifies the exact upstream commit, gives translation-unit-local
 symbols unique names, preserves the decoder's symbolic control-flow labels,
 applies the long-prefix helper from `tools/avx512-find-match-length.h`, and
-writes one deterministic include. `--no-avx512-match-length` reproduces the
-scalar upstream prefix matcher. Experimental GCC scheduling targets can be
-selected with the generator's documented command-line flags; release changes
-should be accepted only after `make test` and the benchmark agree.
+writes one deterministic include. The default release translation uses O3
+only for `enc/backward_references_hq.c`; `--no-hot-sources` disables it.
+`--no-avx512-match-length` reproduces the scalar upstream prefix matcher.
+Experimental GCC scheduling targets can be selected with the generator's
+documented command-line flags; release changes should be accepted only after
+`make test` and the benchmark agree.
 
 See `THIRD_PARTY_NOTICES.md` for the upstream MIT license and attribution.

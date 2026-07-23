@@ -21,6 +21,13 @@ typedef int (*reference_decoder_process_fn)(
     void *, size_t *, const uint8_t **, size_t *, uint8_t **, size_t *);
 typedef void (*reference_decoder_destroy_fn)(void *);
 
+enum {
+  REFERENCE_PARAM_MODE = 0,
+  REFERENCE_PARAM_QUALITY = 1,
+  REFERENCE_PARAM_LGWIN = 2,
+  REFERENCE_PARAM_SIZE_HINT = 5,
+};
+
 typedef struct {
   const uint8_t *input;
   size_t input_size;
@@ -91,10 +98,12 @@ static int reference_encode(context *ctx) {
   void *state =
       ctx->reference_encoder_create(allocate, release, NULL);
   if (state == NULL ||
-      !ctx->reference_encoder_set(state, 1, ctx->quality) ||
-      !ctx->reference_encoder_set(state, 3, 22) ||
-      !ctx->reference_encoder_set(state, 0, 0) ||
-      !ctx->reference_encoder_set(state, 2, (uint32_t)ctx->input_size)) {
+      !ctx->reference_encoder_set(
+          state, REFERENCE_PARAM_QUALITY, ctx->quality) ||
+      !ctx->reference_encoder_set(state, REFERENCE_PARAM_LGWIN, 22) ||
+      !ctx->reference_encoder_set(state, REFERENCE_PARAM_MODE, 0) ||
+      !ctx->reference_encoder_set(
+          state, REFERENCE_PARAM_SIZE_HINT, (uint32_t)ctx->input_size)) {
     if (state != NULL) ctx->reference_encoder_destroy(state);
     return 0;
   }

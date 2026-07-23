@@ -28,6 +28,7 @@ MATCH_LENGTH_SOURCES = {
     Path("enc/compress_fragment.c"),
     Path("enc/compress_fragment_two_pass.c"),
 }
+DEFAULT_HOT_SOURCES = ["enc/backward_references_hq.c"]
 
 
 def run(*arguments: str, cwd: Path | None = None) -> str:
@@ -427,8 +428,18 @@ def main() -> None:
     parser.add_argument(
         "--hot-source",
         action="append",
-        default=[],
-        help="c/-relative source to compile with the hot-source target flags",
+        default=list(DEFAULT_HOT_SOURCES),
+        help=(
+            "c/-relative source to compile with the hot-source target flags "
+            "(default: enc/backward_references_hq.c)"
+        ),
+    )
+    parser.add_argument(
+        "--no-hot-sources",
+        action="store_const",
+        const=[],
+        dest="hot_source",
+        help="disable the release HQ O3 translation",
     )
     parser.add_argument(
         "--hot-optimization",
@@ -438,13 +449,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--hot-march",
-        default="x86-64-v4",
-        help="instruction target for --hot-source units (default: x86-64-v4)",
+        default="x86-64",
+        help="instruction target for --hot-source units (default: x86-64)",
     )
     parser.add_argument(
         "--hot-mtune",
-        default="znver5",
-        help="scheduling target for --hot-source units (default: znver5)",
+        default="generic",
+        help="scheduling target for --hot-source units (default: generic)",
     )
     parser.add_argument(
         "--hot-extra-flag",

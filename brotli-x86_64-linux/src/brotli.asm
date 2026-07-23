@@ -21,6 +21,13 @@ default rel
 %define OPT_SIZE_HINT   16
 %define OPT_FLAGS       24
 
+; BrotliEncoderParameter values from Google Brotli 1.2.0.
+%define PARAM_MODE      0
+%define PARAM_QUALITY   1
+%define PARAM_LGWIN     2
+%define PARAM_LGBLOCK   3
+%define PARAM_SIZE_HINT 5
+
 %define ASM_ERROR       0
 %define ASM_NEEDS_INPUT 1
 %define ASM_NEEDS_OUTPUT 2
@@ -93,7 +100,7 @@ brotli_asm_cpu_supported:
         ret
 
 ; Long-prefix continuation used by the encoder hash chains. Callers have
-; already proved the first eight bytes equal, so 64-byte comparisons are
+; already proved the first 16 bytes equal, so 64-byte comparisons are
 ; profitable here without bloating their immediate-mismatch paths.
 ; rdi=s1, rsi=s2, rdx=limit; returns the equal prefix length in rax.
 BrotliFindMatchLengthAVX512:
@@ -500,25 +507,25 @@ encoder_init_core:
         mov     [rbx+WRAP_CORE], rax
 
         mov     rdi, rax
-        mov     esi, 1
+        mov     esi, PARAM_QUALITY
         mov     edx, [rbx+WRAP_OPTIONS+OPT_QUALITY]
         call    BrotliEncoderSetParameter
         test    eax, eax
         jz      .option_failed
         mov     rdi, [rbx+WRAP_CORE]
-        xor     esi, esi
+        mov     esi, PARAM_MODE
         mov     edx, [rbx+WRAP_OPTIONS+OPT_MODE]
         call    BrotliEncoderSetParameter
         test    eax, eax
         jz      .option_failed
         mov     rdi, [rbx+WRAP_CORE]
-        mov     esi, 3
+        mov     esi, PARAM_LGWIN
         mov     edx, [rbx+WRAP_OPTIONS+OPT_LGWIN]
         call    BrotliEncoderSetParameter
         test    eax, eax
         jz      .option_failed
         mov     rdi, [rbx+WRAP_CORE]
-        mov     esi, 2
+        mov     esi, PARAM_SIZE_HINT
         mov     edx, [rbx+WRAP_OPTIONS+OPT_SIZE_HINT]
         call    BrotliEncoderSetParameter
         test    eax, eax
@@ -527,7 +534,7 @@ encoder_init_core:
         test    edx, edx
         jz      .success
         mov     rdi, [rbx+WRAP_CORE]
-        mov     esi, 4
+        mov     esi, PARAM_LGBLOCK
         call    BrotliEncoderSetParameter
         test    eax, eax
         jz      .option_failed

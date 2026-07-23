@@ -27,16 +27,12 @@ static void release(void *opaque, void *address) {
   free(address);
 }
 
-static uint8_t *asm_compress(const uint8_t *input, size_t input_size,
-                             unsigned quality, size_t *output_size) {
-  brotli_asm_options options = {0};
-  options.quality = quality;
-  options.lgwin = 22;
-  options.mode = BROTLI_ASM_MODE_GENERIC;
-  options.size_hint = input_size;
+static uint8_t *asm_compress_options(
+    const uint8_t *input, size_t input_size,
+    const brotli_asm_options *options, size_t *output_size) {
   int error = 0;
   brotli_asm_state *state =
-      brotli_asm_encoder_create(&options, allocate, release, NULL, &error);
+      brotli_asm_encoder_create(options, allocate, release, NULL, &error);
   if (state == NULL) {
     fprintf(stderr, "encoder create error: %d\n", error);
     fail("encoder create");
@@ -64,6 +60,17 @@ static uint8_t *asm_compress(const uint8_t *input, size_t input_size,
   *output_size = capacity - available_out;
   brotli_asm_encoder_destroy(state);
   return output;
+}
+
+static uint8_t *asm_compress(const uint8_t *input, size_t input_size,
+                             unsigned quality, size_t *output_size) {
+  brotli_asm_options options = {
+      .quality = quality,
+      .lgwin = 22,
+      .mode = BROTLI_ASM_MODE_GENERIC,
+      .size_hint = input_size,
+  };
+  return asm_compress_options(input, input_size, &options, output_size);
 }
 
 static void asm_decompress(const uint8_t *input, size_t input_size,
@@ -179,6 +186,24 @@ int main(void) {
     if (memcmp(decoded, input, input_size) != 0)
       fail("assembly decoder rejected reference stream");
     free(compressed);
+  }
+
+  {
+    brotli_asm_options parameter_options = {
+        .quality = 4,
+        .lgwin = 10,
+        .mode = BROTLI_ASM_MODE_GENERIC,
+        .lgblock = 16,
+        .size_hint = input_size,
+    };
+    size_t parameter_stream_size = 0;
+    uint8_t *parameter_stream =
+        asm_compress_options(input, input_size, &parameter_options,
+                             &parameter_stream_size);
+    if (parameter_stream_size == 0 ||
+        (parameter_stream[0] & 0x7Fu) != 0x21u)
+      fail("encoder parameter mapping");
+    free(parameter_stream);
   }
 
   const size_t large_size = 3500000;
