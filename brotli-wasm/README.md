@@ -157,16 +157,38 @@ Run `npm run server` to open the bundled interactive demo.
 
 ## Command line
 
-The CLI reads binary stdin and writes binary stdout. Compression is the
-default:
+The CLI accepts standard input or one or more file operands. With no file, or
+with `-`, it reads binary standard input and writes binary standard output:
 
 ```sh
-node bin/brotli.js --quality 6 < input.txt > input.txt.br
-node bin/brotli.js --decompress < input.txt.br > restored.txt
+node bin/brotli.js -q6 < input.txt > input.txt.br
+node bin/brotli.js -d < input.txt.br > restored.txt
 ```
 
-Options are `--decompress`, `--quality 0..11`, `--lgwin 10..24`, and
-`--mode generic|text|font`.
+For file operands, compression appends `.br` and decompression removes it.
+Multiple files are processed separately. Sources are kept by default:
+
+```sh
+node bin/brotli.js -6 input.txt
+node bin/brotli.js -d input.txt.br
+node bin/brotli.js -0S.brotli first.txt second.txt
+```
+
+Quality 11 is the command-line default. Use `-0` through `-9`, `-q NUM`, or
+`-Z` to select a level. The CLI also supports stdout (`-c`), integrity testing
+(`-t`), a named output (`-o`), a custom suffix (`-S`), forced replacement
+(`-f`), source removal/retention (`-j`/`-k`), non-expanding output (`-s`),
+attribute copying control (`-n`), verbosity (`-v`), and window selection
+(`-w 0|10..24`). `--mode=generic|text|font` remains available as an extension.
+Long options accept both `--option value` and `--option=value`; simple short
+options can be grouped, so `-9kf` means `-9 -k -f`. Run
+`node bin/brotli.js --help` for the full list.
+
+File output is written to a temporary sibling and moved into place only after
+the stream succeeds. Existing destinations are preserved unless `-f` is used,
+and sources are removed only after useful output is committed. Large-window
+streams, comments, custom dictionaries, and concatenated-stream decoding are
+not supported.
 
 ## Benchmark
 
