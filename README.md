@@ -54,11 +54,11 @@ flush/reset, a binary CLI, and a browser demo. See
 
 The benchmark compares both directions against Node's native Brotli and a
 Rust/WASM implementation. On the AMD EPYC 9575F test host, this implementation
-encoded the bulk corpora 2.2–75.0× as fast as the Rust/WASM reference at
-qualities 4 and 6 when both return owned output, while reaching 0.50–3.06×
-Node's native speed. The largest gain comes from a hand-tuned SIMD match
-extension path in the WAT. Owned-output decoding measured 1.4–10.2× the
-Rust/WASM reference and 0.77–1.19× Node.
+encoded the bulk corpora 2.8–79.4× as fast as the Rust/WASM reference at
+qualities 4 and 6 when both return owned output, while reaching 0.66–3.05×
+Node's native speed. Hand-tuned SIMD match paths and an exact q11 cost cache
+also put repetitive-text q11 at 1.49× Node and 2.73× Rust/WASM. Owned-output
+decoding measured 1.4–10.8× the Rust/WASM reference and 0.62–1.21× Node.
 
 
 ## sha3-256-wasm

@@ -194,47 +194,55 @@ ring-buffer edges. On this host, focused before/after measurements improved
 the repetitive-text q4 path from about 1,430 to 8,000 MiB/s and q6 from about
 1,500 to 7,500 MiB/s. The mixed WAT-source q4 corpus remained near 300 MiB/s.
 
+Quality 11 has additional SIMD paths for ASCII classification and exact
+mismatch location in its H10 match finder. Its cost model also memoizes the
+existing exact log₂ result for counts below 2,048, using one lazily allocated
+16 KiB cache per q11 module instance. Together these changes raised
+repetitive-text q11 streaming throughput from about 39–40 to 54 MiB/s without
+changing the compressed bytes. Mixed WAT source and incompressible binary
+throughput remained effectively unchanged.
+
 The following run used Node 22.22.2 on an AMD EPYC 9575F KVM guest:
 
 ```text
 Adaptive timing uses at least 100 ms per result.
 Compression (MiB/s; ratios use WAT owned output)
   corpus   q    size(B)    wat stream    wat owned    node owned    rust owned   owned/node   owned/rust  wat bytes  node bytes  rust bytes
-    tiny   0         64         13.17        11.41         16.25           n/a        0.70x          n/a         68          68         n/a
-    tiny   4         64          9.44         8.56          8.47          1.39        1.01x        6.17x         64          64          64
-    tiny   6         64          7.92         7.64          6.69          0.46        1.14x       16.69x         65          65          65
-    tiny  11         64          0.25         0.25          0.22          0.02        1.14x       10.41x         68          68          68
-    text   0     262144       4174.91      3630.10      13752.08           n/a        0.26x          n/a        660         208         n/a
-    text   4     262144       8184.68      7622.90       2491.80        101.63        3.06x       75.01x        106         106         106
-    text   6     262144       7717.85      7247.39       2377.17        112.94        3.05x       64.17x        100         100         100
-    text  11     262144         39.25        32.87         45.98         19.07        0.71x        1.72x         97          97          97
-     wat   0     262144       1286.15      1202.43       2348.55           n/a        0.51x          n/a      26235       25684         n/a
-     wat   4     262144        258.59       297.64        326.56         43.97        0.91x        6.77x      18011       18011       18053
-     wat   6     262144        127.65       126.10        140.21         36.43        0.90x        3.46x      14992       14992       14993
-     wat  11     262144          0.72         0.73          0.81          0.53        0.89x        1.36x      12057       12057       12026
-  binary   0    1048576       3898.89      2350.45       3575.24           n/a        0.66x          n/a    1048625     1048581         n/a
-  binary   4    1048576        849.14       783.13        825.72        125.36        0.95x        6.25x    1048581     1048581     1048581
-  binary   6    1048576        240.29       248.49        498.00        115.22        0.50x        2.16x    1048581     1048581     1048581
-  binary  11    1048576          2.03         3.50          4.64          2.75        0.75x        1.27x    1048581     1048581     1048581
+    tiny   0         64         13.61        11.53         18.19           n/a        0.63x          n/a         68          68         n/a
+    tiny   4         64          9.74         9.01          8.61          1.41        1.05x        6.39x         64          64          64
+    tiny   6         64          8.58         7.78          7.47          0.48        1.04x       16.26x         65          65          65
+    tiny  11         64          0.26         0.26          0.30          0.02        0.88x       10.52x         68          68          68
+    text   0     262144       4198.70      3682.78      13905.65           n/a        0.26x          n/a        660         208         n/a
+    text   4     262144       7778.35      8062.93       2641.07        101.50        3.05x       79.43x        106         106         106
+    text   6     262144       7607.28      7245.92       2514.95        116.80        2.88x       62.04x        100         100         100
+    text  11     262144         53.87        54.46         36.53         19.98        1.49x        2.73x         97          97          97
+     wat   0     262144       1306.99      1431.53       2403.33           n/a        0.60x          n/a      26235       25684         n/a
+     wat   4     262144        297.78       292.71        331.48         43.90        0.88x        6.67x      18011       18011       18053
+     wat   6     262144        130.98       131.76        161.92         38.15        0.81x        3.45x      14992       14992       14993
+     wat  11     262144          0.71         0.75          0.83          0.49        0.90x        1.51x      12057       12057       12026
+  binary   0    1048576       4602.46      2684.19       5016.34           n/a        0.54x          n/a    1048625     1048581         n/a
+  binary   4    1048576        983.48       892.26        669.46        141.99        1.33x        6.28x    1048581     1048581     1048581
+  binary   6    1048576        445.55       404.26        615.82        142.41        0.66x        2.84x    1048581     1048581     1048581
+  binary  11    1048576          3.79         3.76          4.68          2.97        0.80x        1.27x    1048581     1048581     1048581
 
 Decompression (MiB/s; ratios use WAT owned output)
   corpus   q    size(B)    wat stream    wat owned    node owned    rust owned   owned/node   owned/rust
-    tiny   0         64        124.43        87.30         26.20         11.22        3.33x        7.78x
-    tiny   4         64         33.49        33.72         20.31          7.98        1.66x        4.22x
-    tiny   6         64         36.78        34.36         15.54          7.73        2.21x        4.44x
-    tiny  11         64        108.52        83.36         27.92         17.33        2.99x        4.81x
-    text   0     262144       3297.72      2190.17       2547.18        700.28        0.86x        3.13x
-    text   4     262144       1863.65      1568.75       1939.42       1078.89        0.81x        1.45x
-    text   6     262144       1830.70      1534.48       1883.96       1139.60        0.81x        1.35x
-    text  11     262144       1914.86      1618.90       1840.40       1124.00        0.88x        1.44x
-     wat   0     262144       1455.94      1220.47       1655.48        384.84        0.74x        3.17x
-     wat   4     262144       1968.36      1577.18       1935.63        703.83        0.81x        2.24x
-     wat   6     262144       2477.82      1829.40       2348.41        788.38        0.78x        2.32x
-     wat  11     262144       2783.99      1749.66       2265.13        722.36        0.77x        2.42x
-  binary   0    1048576      16295.19      4965.28       5102.34        671.77        0.97x        7.39x
-  binary   4    1048576      18537.41      5150.98       5219.60        622.88        0.99x        8.27x
-  binary   6    1048576      15585.71      5798.09       4883.80        571.28        1.19x       10.15x
-  binary  11    1048576      21186.55      5812.86       5556.46        677.56        1.05x        8.58x
+    tiny   0         64        121.74        89.91         32.18         17.00        2.79x        5.29x
+    tiny   4         64         43.67        39.71         21.36          8.04        1.86x        4.94x
+    tiny   6         64         39.06        38.15         14.03          7.68        2.72x        4.97x
+    tiny  11         64         97.50        82.30         29.79         15.34        2.76x        5.37x
+    text   0     262144       3654.14      2363.50       2938.07        644.35        0.80x        3.67x
+    text   4     262144       1933.59      1608.32       1954.14       1135.00        0.82x        1.42x
+    text   6     262144       1903.50      1577.76       1986.67       1135.45        0.79x        1.39x
+    text  11     262144       1837.74      1612.93       1895.81       1133.99        0.85x        1.42x
+     wat   0     262144       1462.53      1259.68       1767.97        415.78        0.71x        3.03x
+     wat   4     262144       1872.94      1689.19       2313.29        733.37        0.73x        2.30x
+     wat   6     262144       1873.52      1668.54       2712.89        809.22        0.62x        2.06x
+     wat  11     262144       2647.64      2100.44       2523.89        937.08        0.83x        2.24x
+  binary   0    1048576      20903.17      6344.58       5263.79        628.89        1.21x       10.09x
+  binary   4    1048576      20528.65      6542.17       6965.98        655.36        0.94x        9.98x
+  binary   6    1048576      20686.64      6098.03       6157.02        705.37        0.99x        8.65x
+  binary  11    1048576      21267.26      6163.39       6312.26        568.85        0.98x       10.83x
 ```
 
 Compression output is normally byte-identical to Google Brotli for equal

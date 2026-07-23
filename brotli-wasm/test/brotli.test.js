@@ -250,6 +250,7 @@ test("SIMD match extension preserves mismatches and ring-buffer wraps", async ()
 	const expectedHashes = new Map([
 		[4, "a74a847a6528b3a15ba2c126d86609ce282dc8c9db9dd03fabcecc52b03cb759"],
 		[6, "dda48df8e84df1e90bcd0b8bd8923d0ff6ef6c4519ef759a7232eae9f7b429e9"],
+		[11, "601e20d92b9c3213ca975f02869fae2d2ae2a8aec98a3831666ec8b30ad0050e"],
 	]);
 	for (const [quality, expectedHash] of expectedHashes) {
 		const compressed = await encode(
