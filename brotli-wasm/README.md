@@ -179,8 +179,13 @@ owned` copies every output chunk and concatenates them into one newly allocated
 APIs. Ratios use `wat owned`; above 1x means this implementation is faster.
 Full runs use adaptive iteration counts with at least 100 ms of timed work per
 result after a per-action warmup; quick regression checks use at least 20 ms.
-For focused measurements, pass `--corpus=tiny|text|wat|binary`,
+For focused measurements, pass `--corpus=tiny|text|wat-prefix|binary`,
 `--quality=0..11`, and/or `--minimum-ms=500`.
+
+`size(B)` is the uncompressed corpus length, while `wat output(B)`, `node
+bytes`, and `rust bytes` are compressed output lengths. `wat-prefix` is the
+first 262,144 bytes of `src/brotli.wat`; `text` is a 262,144-byte repeated-text
+fixture.
 
 The Rust implementation does not expose quality 0, shown as `n/a`. `npm run
 bench:check` runs a short q4 regression gate using owned output: encoding must
@@ -202,47 +207,56 @@ repetitive-text q11 streaming throughput from about 39–40 to 54 MiB/s without
 changing the compressed bytes. Mixed WAT source and incompressible binary
 throughput remained effectively unchanged.
 
+Quality 0 dynamically sizes only the encoder input transfer buffer. An
+accurate `sizeHint` selects between 64 KiB and 1 MiB; a missing hint uses
+256 KiB. This lets its one-pass compressor see medium inputs as one block
+without increasing allocations for small inputs or other quality levels.
+Focused before/after measurements raised repetitive-text q0 streaming from
+about 4,300 to 7,200 MiB/s, mixed WAT source from about 1,450 to 2,070 MiB/s,
+and incompressible input from about 4,700 to 9,600 MiB/s. It also made the q0
+output byte-identical to Node's one-shot result for all three bulk corpora.
+
 The following run used Node 22.22.2 on an AMD EPYC 9575F KVM guest:
 
 ```text
 Adaptive timing uses at least 100 ms per result.
 Compression (MiB/s; ratios use WAT owned output)
-  corpus   q    size(B)    wat stream    wat owned    node owned    rust owned   owned/node   owned/rust  wat bytes  node bytes  rust bytes
-    tiny   0         64         13.61        11.53         18.19           n/a        0.63x          n/a         68          68         n/a
-    tiny   4         64          9.74         9.01          8.61          1.41        1.05x        6.39x         64          64          64
-    tiny   6         64          8.58         7.78          7.47          0.48        1.04x       16.26x         65          65          65
-    tiny  11         64          0.26         0.26          0.30          0.02        0.88x       10.52x         68          68          68
-    text   0     262144       4198.70      3682.78      13905.65           n/a        0.26x          n/a        660         208         n/a
-    text   4     262144       7778.35      8062.93       2641.07        101.50        3.05x       79.43x        106         106         106
-    text   6     262144       7607.28      7245.92       2514.95        116.80        2.88x       62.04x        100         100         100
-    text  11     262144         53.87        54.46         36.53         19.98        1.49x        2.73x         97          97          97
-     wat   0     262144       1306.99      1431.53       2403.33           n/a        0.60x          n/a      26235       25684         n/a
-     wat   4     262144        297.78       292.71        331.48         43.90        0.88x        6.67x      18011       18011       18053
-     wat   6     262144        130.98       131.76        161.92         38.15        0.81x        3.45x      14992       14992       14993
-     wat  11     262144          0.71         0.75          0.83          0.49        0.90x        1.51x      12057       12057       12026
-  binary   0    1048576       4602.46      2684.19       5016.34           n/a        0.54x          n/a    1048625     1048581         n/a
-  binary   4    1048576        983.48       892.26        669.46        141.99        1.33x        6.28x    1048581     1048581     1048581
-  binary   6    1048576        445.55       404.26        615.82        142.41        0.66x        2.84x    1048581     1048581     1048581
-  binary  11    1048576          3.79         3.76          4.68          2.97        0.80x        1.27x    1048581     1048581     1048581
+    corpus   q    size(B)    wat stream    wat owned    node owned    rust owned   owned/node   owned/rust  wat output(B)  node bytes  rust bytes
+      tiny   0         64         13.89        11.31         19.55           n/a        0.58x          n/a             68          68         n/a
+      tiny   4         64          9.57         8.87          7.27          1.42        1.22x        6.22x             64          64          64
+      tiny   6         64          7.18         7.92          6.80          0.45        1.17x       17.52x             65          65          65
+      tiny  11         64          0.24         0.21          0.31          0.03        0.68x        8.00x             68          68          68
+      text   0     262144       6899.83      7045.22      14126.35           n/a        0.50x          n/a            208         208         n/a
+      text   4     262144       8464.22      8244.78       2521.55        104.62        3.27x       78.81x            106         106         106
+      text   6     262144       8074.64      7823.34       2713.41        119.23        2.88x       65.62x            100         100         100
+      text  11     262144         51.54        53.20         49.31         19.64        1.08x        2.71x             97          97          97
+wat-prefix   0     262144       2142.20      1724.47       2175.81           n/a        0.79x          n/a          25684       25684         n/a
+wat-prefix   4     262144        298.09       286.72        331.45         42.08        0.87x        6.81x          18011       18011       18053
+wat-prefix   6     262144        125.03       120.89        156.22         38.65        0.77x        3.13x          14992       14992       14993
+wat-prefix  11     262144          0.70         0.76          0.92          0.55        0.83x        1.38x          12057       12057       12026
+    binary   0    1048576       9810.88      4433.43       3802.67           n/a        1.17x          n/a        1048581     1048581         n/a
+    binary   4    1048576        968.96       907.17        976.23        148.97        0.93x        6.09x        1048581     1048581     1048581
+    binary   6    1048576        454.39       428.94        490.41        137.93        0.87x        3.11x        1048581     1048581     1048581
+    binary  11    1048576          3.21         3.57          4.10          2.90        0.87x        1.23x        1048581     1048581     1048581
 
 Decompression (MiB/s; ratios use WAT owned output)
-  corpus   q    size(B)    wat stream    wat owned    node owned    rust owned   owned/node   owned/rust
-    tiny   0         64        121.74        89.91         32.18         17.00        2.79x        5.29x
-    tiny   4         64         43.67        39.71         21.36          8.04        1.86x        4.94x
-    tiny   6         64         39.06        38.15         14.03          7.68        2.72x        4.97x
-    tiny  11         64         97.50        82.30         29.79         15.34        2.76x        5.37x
-    text   0     262144       3654.14      2363.50       2938.07        644.35        0.80x        3.67x
-    text   4     262144       1933.59      1608.32       1954.14       1135.00        0.82x        1.42x
-    text   6     262144       1903.50      1577.76       1986.67       1135.45        0.79x        1.39x
-    text  11     262144       1837.74      1612.93       1895.81       1133.99        0.85x        1.42x
-     wat   0     262144       1462.53      1259.68       1767.97        415.78        0.71x        3.03x
-     wat   4     262144       1872.94      1689.19       2313.29        733.37        0.73x        2.30x
-     wat   6     262144       1873.52      1668.54       2712.89        809.22        0.62x        2.06x
-     wat  11     262144       2647.64      2100.44       2523.89        937.08        0.83x        2.24x
-  binary   0    1048576      20903.17      6344.58       5263.79        628.89        1.21x       10.09x
-  binary   4    1048576      20528.65      6542.17       6965.98        655.36        0.94x        9.98x
-  binary   6    1048576      20686.64      6098.03       6157.02        705.37        0.99x        8.65x
-  binary  11    1048576      21267.26      6163.39       6312.26        568.85        0.98x       10.83x
+    corpus   q    size(B)    wat stream    wat owned    node owned    rust owned   owned/node   owned/rust
+      tiny   0         64        118.73        89.32         28.57         15.61        3.13x        5.72x
+      tiny   4         64         44.25        41.74         13.24          8.23        3.15x        5.07x
+      tiny   6         64         41.05        37.98         20.63          8.46        1.84x        4.49x
+      tiny  11         64        103.98        82.16         25.01         15.16        3.28x        5.42x
+      text   0     262144       3706.49      2691.08       2894.14        713.21        0.93x        3.77x
+      text   4     262144       1963.80      1676.20       1885.12       1188.48        0.89x        1.41x
+      text   6     262144       1598.01      1539.39       1907.40       1186.22        0.81x        1.30x
+      text  11     262144       1927.04      1472.53       1674.65       1101.15        0.88x        1.34x
+wat-prefix   0     262144       1229.44      1145.12       1727.98        365.62        0.66x        3.13x
+wat-prefix   4     262144       1828.07      1545.86       2195.70        663.06        0.70x        2.33x
+wat-prefix   6     262144       2390.21      1943.18       2372.62        757.61        0.82x        2.56x
+wat-prefix  11     262144       2749.15      2053.46       2068.86        840.76        0.99x        2.44x
+    binary   0    1048576      20492.95      6152.16       5054.37        731.73        1.22x        8.41x
+    binary   4    1048576      21382.15      7287.71       5494.68        717.56        1.33x       10.16x
+    binary   6    1048576      22282.94      7195.51       6480.73        726.39        1.11x        9.91x
+    binary  11    1048576      21049.07      5707.12       6377.80        680.84        0.89x        8.38x
 ```
 
 Compression output is normally byte-identical to Google Brotli for equal

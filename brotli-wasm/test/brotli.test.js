@@ -107,6 +107,60 @@ for (const quality of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
 	});
 }
 
+test("fast encoder input capacity follows the bounded size hint", async () => {
+	const cases = [
+		{ quality: 0, sizeHint: 64, inputLength: 100_000, consumed: 65_536 },
+		{ quality: 0, sizeHint: 0, inputLength: 300_000, consumed: 262_144 },
+		{
+			quality: 0,
+			sizeHint: 2_000_000,
+			inputLength: 1_200_000,
+			consumed: 1_048_576,
+		},
+		{
+			quality: 1,
+			sizeHint: 300_000,
+			inputLength: 400_000,
+			consumed: 65_536,
+		},
+		{
+			quality: 4,
+			sizeHint: 300_000,
+			inputLength: 400_000,
+			consumed: 65_536,
+		},
+	];
+	for (const { quality, sizeHint, inputLength, consumed } of cases) {
+		const encoder = await new BrotliEncoder().initialize(wasmModule, {
+			quality,
+			sizeHint,
+		});
+		assert.equal(encoder.write(new Uint8Array(inputLength)), consumed);
+	}
+});
+
+test("quality 0 uses one hinted transfer for medium inputs", async () => {
+	const input = new Uint8Array(262_144);
+	const seed = textEncoder.encode(
+		"WebAssembly Brotli compression combines LZ77, Huffman coding, context " +
+			"modeling, and a static dictionary for web content. ",
+	);
+	for (let offset = 0; offset < input.length; offset += seed.length) {
+		input.set(seed.subarray(0, input.length - offset), offset);
+	}
+	const compressed = await encode(
+		wasmModule,
+		input,
+		{
+			quality: 0,
+			sizeHint: input.length,
+		},
+		[input.length],
+	);
+	assert(compressed.length < 300);
+	assert_bytes_equal(brotliDecompressSync(compressed), input);
+});
+
 for (const mode of ["generic", "text", "font"]) {
 	for (const lgwin of [10, 16, 22, 24]) {
 		test(`${mode} mode with lgwin ${lgwin} interoperates`, async () => {

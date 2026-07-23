@@ -92,7 +92,7 @@ const allCorpora = quick
 			{ name: "tiny", data: repeated_text(64) },
 			{ name: "text", data: repeated_text(262_144) },
 			{
-				name: "wat",
+				name: "wat-prefix",
 				data: /** @type {Uint8Array} */ (watSource).subarray(0, 262_144),
 			},
 			{ name: "binary", data: deterministic_binary(1_048_576) },
@@ -342,7 +342,7 @@ const wasmModule = await WebAssembly.compile(wasmBytes);
 
 /** @type {ReadonlyArray<readonly [string, number]>} */
 const compressionColumns = [
-	["corpus", 8],
+	["corpus", 10],
 	["q", 2],
 	["size(B)", 9],
 	["wat stream", 12],
@@ -351,14 +351,14 @@ const compressionColumns = [
 	["rust owned", 12],
 	["owned/node", 11],
 	["owned/rust", 11],
-	["wat bytes", 9],
+	["wat output(B)", 13],
 	["node bytes", 10],
 	["rust bytes", 10],
 ];
 
 /** @type {ReadonlyArray<readonly [string, number]>} */
 const decompressionColumns = [
-	["corpus", 8],
+	["corpus", 10],
 	["q", 2],
 	["size(B)", 9],
 	["wat stream", 12],
