@@ -9,7 +9,42 @@ import { BrotliDecoder, BrotliEncoder } from "../lib/brotli.js";
 const MIB = 1024 * 1024;
 const quick = process.argv.includes("--quick");
 const check = process.argv.includes("--check");
-const minimumMilliseconds = quick ? 20 : 100;
+
+/**
+ * @param {string} name
+ * @returns {string | undefined}
+ */
+function argument_value(name) {
+	const prefix = `--${name}=`;
+	return process.argv
+		.find((argument) => argument.startsWith(prefix))
+		?.slice(prefix.length);
+}
+
+const selectedCorpus = argument_value("corpus");
+const selectedQualityText = argument_value("quality");
+const selectedQuality =
+	selectedQualityText === undefined ? undefined : Number(selectedQualityText);
+const selectedMillisecondsText = argument_value("minimum-ms");
+const selectedMilliseconds =
+	selectedMillisecondsText === undefined
+		? undefined
+		: Number(selectedMillisecondsText);
+if (
+	selectedQuality !== undefined &&
+	(!Number.isInteger(selectedQuality) ||
+		selectedQuality < 0 ||
+		selectedQuality > 11)
+) {
+	throw new RangeError("--quality must be an integer from 0 through 11");
+}
+if (
+	selectedMilliseconds !== undefined &&
+	(!Number.isFinite(selectedMilliseconds) || selectedMilliseconds <= 0)
+) {
+	throw new RangeError("--minimum-ms must be a positive number");
+}
+const minimumMilliseconds = selectedMilliseconds ?? (quick ? 20 : 100);
 const require = createRequire(import.meta.url);
 /** @type {typeof import("rust-brotli-wasm")} */
 const rustBrotli = require("rust-brotli-wasm");
@@ -48,14 +83,35 @@ function deterministic_binary(length) {
 	return result;
 }
 
-const corpora = quick
+const watSource = quick
+	? null
+	: await readFile(new URL("../src/brotli.wat", import.meta.url));
+const allCorpora = quick
 	? [{ name: "text", data: repeated_text(65_536) }]
 	: [
 			{ name: "tiny", data: repeated_text(64) },
 			{ name: "text", data: repeated_text(262_144) },
+			{
+				name: "wat",
+				data: /** @type {Uint8Array} */ (watSource).subarray(0, 262_144),
+			},
 			{ name: "binary", data: deterministic_binary(1_048_576) },
 		];
-const qualities = quick ? [4] : [0, 4, 6, 11];
+const corpora =
+	selectedCorpus === undefined
+		? allCorpora
+		: allCorpora.filter(({ name }) => name === selectedCorpus);
+if (corpora.length === 0) {
+	throw new RangeError(
+		`--corpus must be one of ${allCorpora.map(({ name }) => name).join(", ")}`,
+	);
+}
+const qualities =
+	selectedQuality === undefined
+		? quick
+			? [4]
+			: [0, 4, 6, 11]
+		: [selectedQuality];
 
 /**
  * @param {BrotliEncoder | BrotliDecoder} codec
@@ -226,7 +282,14 @@ function run_decoder_owned(decoder, input) {
  * @returns {{ iterations: number, milliseconds: number }}
  */
 function time(action) {
-	action();
+	const warmupStart = performance.now();
+	const warmupMilliseconds = Math.min(
+		100,
+		Math.max(10, minimumMilliseconds / 2),
+	);
+	do {
+		action();
+	} while (performance.now() - warmupStart < warmupMilliseconds);
 	let iterations = 1;
 	for (;;) {
 		const start = performance.now();

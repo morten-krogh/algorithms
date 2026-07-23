@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { brotliCompressSync, brotliDecompressSync, constants } from "node:zlib";
@@ -225,6 +226,44 @@ test("encoder and decoder cross the maximum RFC sliding-window boundary", async 
 	});
 	const wasmDecoded = await decode(wasmModule, nodeCompressed, [65_536]);
 	assert_bytes_equal(wasmDecoded.output, input);
+});
+
+test("SIMD match extension preserves mismatches and ring-buffer wraps", async () => {
+	const input = new Uint8Array(32_768);
+	const seed = Uint8Array.from(
+		{ length: 768 },
+		(_, index) => (index * 73 + (index >> 3)) & 0xff,
+	);
+	for (
+		let offset = 0, block = 0;
+		offset < input.length;
+		offset += seed.length
+	) {
+		input.set(seed.subarray(0, input.length - offset), offset);
+		const mismatch = offset + 64 + (block & 15);
+		if (mismatch < input.length) {
+			input[mismatch] = (input[mismatch] ?? 0) ^ 0x5a;
+		}
+		block++;
+	}
+
+	const expectedHashes = new Map([
+		[4, "a74a847a6528b3a15ba2c126d86609ce282dc8c9db9dd03fabcecc52b03cb759"],
+		[6, "dda48df8e84df1e90bcd0b8bd8923d0ff6ef6c4519ef759a7232eae9f7b429e9"],
+	]);
+	for (const [quality, expectedHash] of expectedHashes) {
+		const compressed = await encode(
+			wasmModule,
+			input,
+			{ quality, lgwin: 10, sizeHint: input.length },
+			[37, 1021, 65_536],
+		);
+		assert.equal(
+			createHash("sha256").update(compressed).digest("hex"),
+			expectedHash,
+		);
+		assert_bytes_equal(brotliDecompressSync(compressed), input);
+	}
 });
 
 test("flush preserves history and produces one valid stream", async () => {
