@@ -44,6 +44,21 @@ Feel free to open issues or PRs.
 Below follows a description of the currently implemented algorithms.
 Each algorithm get its own subdirectory.
 
+## brotli-wasm
+
+RFC 7932 Brotli compression and decompression in one self-contained WebAssembly
+text module, with a dependency-free streaming JavaScript driver. It supports
+encoder qualities 0–11, all standard windows and modes, the complete decoder,
+flush/reset, a binary CLI, and a browser demo. See
+[brotli-wasm/](brotli-wasm/) for the API, benchmark, and implementation notes.
+
+The benchmark compares both directions against Node's native Brotli and a
+Rust/WASM implementation. On the AMD EPYC 9575F test host, this implementation
+encoded the bulk corpora 2.8–13.0× as fast as the Rust/WASM reference at
+qualities 4 and 6 when both return owned output, while reaching 0.54–1.27×
+Node's native speed. Owned-output decoding measured 1.3–10.6× the Rust/WASM
+reference and 0.81–1.16× Node.
+
 
 ## sha3-256-wasm
 
@@ -206,4 +221,3 @@ assembly implementation is faster:
  10485760        30                      416.25                          72                        720.71        496.64             60           604.06       418.38            72          717.05                           1.19x                          1.01x
 worst repetition spread: sha3-256-x86_64-linux 9.5%, OpenSSL 30.5%, gcrypt 16.7%
 ```
-

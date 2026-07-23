@@ -1,0 +1,43 @@
+{
+	"name": "brotli-wasm",
+	"version": "1.0.0",
+	"description": "Streaming Brotli compression and decompression in WebAssembly",
+	"license": "ISC",
+	"author": "",
+	"type": "module",
+	"main": "lib/brotli.js",
+	"exports": {
+		".": "./lib/brotli.js",
+		"./brotli.wasm": "./lib/brotli.wasm"
+	},
+	"bin": {
+		"brotli-wasm": "bin/brotli.js"
+	},
+	"directories": {
+		"test": "test"
+	},
+	"scripts": {
+		"build": "wat2wasm src/brotli.wat -o lib/brotli.wasm && cp src/brotli.js lib/brotli.js",
+		"server": "http-server -p 9876 -c-1 -o /html/brotli.html",
+		"tsgo": "tsgo -p tsconfig.json",
+		"biome": "biome check",
+		"test": "node --test",
+		"bench": "node bench/bench.js",
+		"bench:check": "node bench/bench.js --quick --check"
+	},
+	"files": [
+		"lib",
+		"bin",
+		"README.md",
+		"LICENSE",
+		"THIRD_PARTY_NOTICES.md"
+	],
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.1",
+		"@types/node": "24.10.2",
+		"@typescript/native-preview": "^7.0.0-dev.20260629.1",
+		"http-server": "^14.1.1",
+		"rust-brotli-wasm": "npm:brotli-wasm@3.0.1",
+		"wabt": "^1.0.39"
+	}
+}

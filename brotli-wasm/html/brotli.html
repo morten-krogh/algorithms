@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Brotli WebAssembly demo</title>
+		<style>
+			:root { color-scheme: light dark; font: 16px/1.5 system-ui, sans-serif; }
+			body { margin: 2rem auto; max-width: 60rem; padding: 0 1rem; }
+			textarea { box-sizing: border-box; min-height: 14rem; width: 100%; }
+			.controls { align-items: center; display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+			output { overflow-wrap: anywhere; }
+		</style>
+	</head>
+	<body>
+		<h1>Brotli WebAssembly</h1>
+		<p>Compress and immediately decompress UTF-8 text with the streaming API.</p>
+		<textarea id="input">Brotli combines LZ77, Huffman coding, context modeling, and a static dictionary.</textarea>
+		<div class="controls">
+			<label>Quality <input id="quality" type="number" min="0" max="11" value="4" /></label>
+			<button id="run" type="button">Round trip</button>
+		</div>
+		<p><strong>Sizes:</strong> <output id="sizes"></output></p>
+		<p><strong>Decoded:</strong> <output id="decoded"></output></p>
+		<script type="module">
+			import { BrotliDecoder, BrotliEncoder } from "../lib/brotli.js";
+
+			const module = await WebAssembly.compileStreaming(fetch("../lib/brotli.wasm"));
+
+			function drain(codec, chunks) {
+				for (;;) {
+					const view = codec.pull();
+					if (!view) return;
+					chunks.push(Uint8Array.from(view));
+				}
+			}
+
+			function join(chunks) {
+				const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+				const result = new Uint8Array(length);
+				let offset = 0;
+				for (const chunk of chunks) {
+					result.set(chunk, offset);
+					offset += chunk.length;
+				}
+				return result;
+			}
+
+			async function roundTrip() {
+				const input = new TextEncoder().encode(document.querySelector("#input").value);
+				const quality = Number(document.querySelector("#quality").value);
+				const encoder = await new BrotliEncoder().initialize(module, {
+					quality,
+					sizeHint: input.length,
+				});
+				const compressedParts = [];
+				let offset = 0;
+				while (offset < input.length) {
+					offset += encoder.write(input.subarray(offset));
+					drain(encoder, compressedParts);
+				}
+				while (!encoder.finish()) drain(encoder, compressedParts);
+				drain(encoder, compressedParts);
+				const compressed = join(compressedParts);
+
+				const decoder = await new BrotliDecoder().initialize(module);
+				const decodedParts = [];
+				offset = 0;
+				while (offset < compressed.length) {
+					offset += decoder.write(compressed.subarray(offset));
+					drain(decoder, decodedParts);
+				}
+				while (!decoder.finish()) drain(decoder, decodedParts);
+				drain(decoder, decodedParts);
+				const decoded = join(decodedParts);
+				document.querySelector("#sizes").value =
+					`${input.length} bytes → ${compressed.length} bytes`;
+				document.querySelector("#decoded").value =
+					new TextDecoder().decode(decoded);
+			}
+
+			document.querySelector("#run").addEventListener("click", roundTrip);
+			await roundTrip();
+		</script>
+	</body>
+</html>
