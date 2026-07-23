@@ -2,9 +2,10 @@
 """Regenerate the NASM Brotli core from Google Brotli 1.2.0.
 
 The generated file is checked in; neither this script nor a C compiler is
-needed to build the released library and CLI.  ObjConv emits valid NASM for
-the selected AVX2 baseline.  This script gives translation-unit-local ELF
-symbols unique names and combines the units into one include file.
+needed to build the released library and CLI. GCC's symbolic Intel assembly
+is converted directly to NASM where possible; ObjConv remains available as a
+diagnostic fallback. This script gives translation-unit-local ELF symbols
+unique names and combines the units into one include file.
 """
 
 from __future__ import annotations
@@ -61,7 +62,7 @@ def local_symbols(obj: Path) -> list[str]:
         ):
             continue
         symbols.append(name)
-    return sorted(set(symbols), key=len, reverse=True)
+    return sorted(set(symbols), key=lambda symbol: (-len(symbol), symbol))
 
 
 def clean_objconv(text: str, obj: Path, tag: str) -> str:
@@ -224,8 +225,15 @@ def gcc_asm_to_nasm(text: str, tag: str) -> str:
         re.findall(r"^([A-Za-z_.$][A-Za-z0-9_.$]*):", text,
                    flags=re.MULTILINE)
     )
+    definitions.update(
+        re.findall(
+            r"^\s*\.set\s+([A-Za-z_.$][A-Za-z0-9_.$]*)\s*,",
+            text,
+            flags=re.MULTILINE,
+        )
+    )
     for index, symbol in enumerate(
-        sorted(definitions - globals_, key=len, reverse=True)
+        sorted(definitions - globals_, key=lambda value: (-len(value), value))
     ):
         text = replace_symbol(text, symbol, f"L_{tag}_gcc_{index}")
 
@@ -238,6 +246,20 @@ def gcc_asm_to_nasm(text: str, tag: str) -> str:
         if line == ".text":
             skipping_note = False
             output.append("SECTION .text progbits alloc exec nowrite align=16")
+            continue
+        if line == ".data":
+            skipping_note = False
+            output.append("SECTION .data progbits alloc noexec write align=16")
+            continue
+        if line == ".bss":
+            skipping_note = False
+            output.append("SECTION .bss nobits alloc noexec write align=16")
+            continue
+        if line == ".rodata":
+            skipping_note = False
+            output.append(
+                "SECTION .rodata progbits alloc noexec nowrite align=16"
+            )
             continue
         if line.startswith(".section"):
             match = re.match(r"\.section\s+([^,\s]+)", line)
@@ -288,17 +310,23 @@ def gcc_asm_to_nasm(text: str, tag: str) -> str:
             if directive == ".string":
                 value += b"\0"
             output.append(
-                "        db " + ", ".join(f"{byte:02X}H" for byte in value)
+                "        db " + ", ".join(f"0{byte:02X}H" for byte in value)
             )
             continue
         if directive == ".base64":
             value = base64.b64decode(ast.literal_eval(line.split(None, 1)[1]))
             output.append(
-                "        db " + ", ".join(f"{byte:02X}H" for byte in value)
+                "        db " + ", ".join(f"0{byte:02X}H" for byte in value)
             )
             continue
         if directive == ".zero":
             output.append(f"        times {line.split(None, 1)[1]} db 0")
+            continue
+        if directive == ".set":
+            name, value = (
+                part.strip() for part in line.split(None, 1)[1].split(",", 1)
+            )
+            output.append(f"{name} equ {value}")
             continue
         if line.startswith("."):
             raise RuntimeError(f"unsupported GCC directive: {line}")
@@ -323,6 +351,8 @@ def gcc_asm_to_nasm(text: str, tag: str) -> str:
             line,
         )
         size_names = {
+            "ZMMWORD": "zword",
+            "YMMWORD": "yword",
             "XMMWORD": "oword",
             "QWORD": "qword",
             "DWORD": "dword",
@@ -360,6 +390,32 @@ def main() -> None:
     parser.add_argument("upstream", type=Path)
     parser.add_argument("objconv", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument(
+        "--optimization",
+        default="-O2",
+        choices=("-O2", "-O3"),
+        help="GCC optimization level (default: -O2)",
+    )
+    parser.add_argument(
+        "--march",
+        default="x86-64",
+        help="GCC instruction-set target (default: x86-64)",
+    )
+    parser.add_argument(
+        "--mtune",
+        default="generic",
+        help="GCC scheduling target (default: generic)",
+    )
+    parser.add_argument(
+        "--symbolic-all",
+        action="store_true",
+        help="convert GCC symbolic Intel assembly for every translation unit",
+    )
+    parser.add_argument(
+        "--profile-dir",
+        type=Path,
+        help="consume GCC profile data whose files are named after source tags",
+    )
     args = parser.parse_args()
 
     upstream = args.upstream.resolve()
@@ -394,17 +450,22 @@ def main() -> None:
                 str(upstream / "c/include"),
                 "-I",
                 str(upstream),
-                "-O2",
+                args.optimization,
                 "-DNDEBUG",
-                "-march=x86-64",
-                "-mtune=generic",
+                f"-march={args.march}",
+                f"-mtune={args.mtune}",
                 "-fno-semantic-interposition",
                 "-fno-stack-protector",
                 "-fno-asynchronous-unwind-tables",
                 "-fno-unwind-tables",
                 "-fno-pic",
             ]
-            if relative == Path("dec/decode.c"):
+            if args.profile_dir is not None:
+                compiler_arguments += [
+                    f"-fprofile-use={args.profile_dir.resolve()}",
+                    "-fprofile-correction",
+                ]
+            if args.symbolic_all or relative == Path("dec/decode.c"):
                 run(
                     *compiler_arguments,
                     "-S",

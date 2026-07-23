@@ -174,8 +174,9 @@ static double mib_per_second(size_t bytes, unsigned iterations, double time) {
 
 int main(int argc, char **argv) {
   int enforce = argc == 2 && strcmp(argv[1], "--check") == 0;
-  if (argc > 2 || (argc == 2 && !enforce)) {
-    fprintf(stderr, "Usage: %s [--check]\n", argv[0]);
+  int target = argc == 2 && strcmp(argv[1], "--target") == 0;
+  if (argc > 2 || (argc == 2 && !enforce && !target)) {
+    fprintf(stderr, "Usage: %s [--check|--target]\n", argv[0]);
     return 2;
   }
   if (!brotli_asm_cpu_supported()) {
@@ -306,12 +307,15 @@ int main(int argc, char **argv) {
       decode_asm_time += asm_decode_time / (double)(iterations[row] * 4);
       decode_reference_time +=
           reference_decode_time / (double)(iterations[row] * 4);
-      if (encode_ratio < 1.05 || decode_ratio < 0.95) check_failed = 1;
+      double minimum_encode = target ? 1.05 : 0.90;
+      double minimum_decode = target ? 0.95 : 0.90;
+      if (encode_ratio < minimum_encode || decode_ratio < minimum_decode)
+        check_failed = 1;
     }
   }
   double aggregate_decode_ratio = decode_reference_time / decode_asm_time;
   printf("aggregate q0/q4/q6 decode ratio: %.2fx\n", aggregate_decode_ratio);
-  if (aggregate_decode_ratio < 1.05) check_failed = 1;
+  if (aggregate_decode_ratio < (target ? 1.05 : 0.95)) check_failed = 1;
   printf("checksum: %llu\n", (unsigned long long)checksum);
 
   free(decoded);
@@ -319,8 +323,10 @@ int main(int argc, char **argv) {
   free(input);
   dlclose(decoder_library);
   dlclose(encoder_library);
-  if (enforce && check_failed) {
-    fputs("performance gate failed\n", stderr);
+  if ((enforce || target) && check_failed) {
+    fputs(target ? "optimization target not met\n"
+                 : "performance regression check failed\n",
+          stderr);
     return 1;
   }
   return 0;

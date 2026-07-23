@@ -117,9 +117,59 @@ exit:
 
 memcpy:
         mov     rax, rdi
+        cmp     rdx, 16
+        ja      .over16
+        cmp     edx, 8
+        jae     .copy8
+        cmp     edx, 4
+        jae     .copy4
+        cmp     edx, 2
+        jae     .copy2
+        test    edx, edx
+        jz      .done_scalar
+        mov     cl, [rsi]
+        mov     [rdi], cl
+.done_scalar:
+        ret
+.copy2:
+        mov     cx, [rsi]
+        mov     r8w, [rsi+rdx-2]
+        mov     [rdi], cx
+        mov     [rdi+rdx-2], r8w
+        ret
+.copy4:
+        mov     ecx, [rsi]
+        mov     r8d, [rsi+rdx-4]
+        mov     [rdi], ecx
+        mov     [rdi+rdx-4], r8d
+        ret
+.copy8:
+        mov     rcx, [rsi]
+        mov     r8, [rsi+rdx-8]
+        mov     [rdi], rcx
+        mov     [rdi+rdx-8], r8
+        ret
+.over16:
+        cmp     rdx, 32
+        ja      .over32
+        movdqu  xmm0, [rsi]
+        movdqu  xmm1, [rsi+rdx-16]
+        movdqu  [rdi], xmm0
+        movdqu  [rdi+rdx-16], xmm1
+        ret
+.over32:
+        cmp     rdx, 64
+        ja      .over64
+        vmovdqu ymm0, [rsi]
+        vmovdqu ymm1, [rsi+rdx-32]
+        vmovdqu [rdi], ymm0
+        vmovdqu [rdi+rdx-32], ymm1
+        vzeroupper
+        ret
+.over64:
         cmp     rdx, 256
         jb      .chunks
-.loop4:
+.loop256:
         vmovdqu64 zmm0, [rsi]
         vmovdqu64 zmm1, [rsi+64]
         vmovdqu64 zmm2, [rsi+128]
@@ -132,18 +182,18 @@ memcpy:
         add     rdi, 256
         sub     rdx, 256
         cmp     rdx, 256
-        jae     .loop4
+        jae     .loop256
 .chunks:
         cmp     rdx, 64
         jb      .tail
-.loop:
+.loop64:
         vmovdqu64 zmm0, [rsi]
         vmovdqu64 [rdi], zmm0
         add     rsi, 64
         add     rdi, 64
         sub     rdx, 64
         cmp     rdx, 64
-        jae     .loop
+        jae     .loop64
 .tail:
         test    edx, edx
         jz      .done
@@ -185,10 +235,61 @@ memmove:
 
 memset:
         mov     r8, rdi
-        vpbroadcastb zmm0, esi
+        movzx   eax, sil
+        mov     rcx, 0101010101010101H
+        imul    rax, rcx
+        cmp     rdx, 16
+        ja      .over16
+        cmp     edx, 8
+        jae     .fill8
+        cmp     edx, 4
+        jae     .fill4
+        cmp     edx, 2
+        jae     .fill2
+        test    edx, edx
+        jz      .done_scalar
+        mov     [rdi], al
+.done_scalar:
+        mov     rax, r8
+        ret
+.fill2:
+        mov     [rdi], ax
+        mov     [rdi+rdx-2], ax
+        mov     rax, r8
+        ret
+.fill4:
+        mov     [rdi], eax
+        mov     [rdi+rdx-4], eax
+        mov     rax, r8
+        ret
+.fill8:
+        mov     [rdi], rax
+        mov     [rdi+rdx-8], rax
+        mov     rax, r8
+        ret
+.over16:
+        vmovq   xmm0, rax
+        vpbroadcastq xmm0, xmm0
+        cmp     rdx, 32
+        ja      .over32
+        vmovdqu [rdi], xmm0
+        vmovdqu [rdi+rdx-16], xmm0
+        mov     rax, r8
+        ret
+.over32:
+        vinserti128 ymm0, ymm0, xmm0, 1
+        cmp     rdx, 64
+        ja      .over64
+        vmovdqu [rdi], ymm0
+        vmovdqu [rdi+rdx-32], ymm0
+        vzeroupper
+        mov     rax, r8
+        ret
+.over64:
+        vinserti64x4 zmm0, zmm0, ymm0, 1
         cmp     rdx, 256
         jb      .chunks
-.loop4:
+.loop256:
         vmovdqu64 [rdi], zmm0
         vmovdqu64 [rdi+64], zmm0
         vmovdqu64 [rdi+128], zmm0
@@ -196,16 +297,16 @@ memset:
         add     rdi, 256
         sub     rdx, 256
         cmp     rdx, 256
-        jae     .loop4
+        jae     .loop256
 .chunks:
         cmp     rdx, 64
         jb      .tail
-.loop:
+.loop64:
         vmovdqu64 [rdi], zmm0
         add     rdi, 64
         sub     rdx, 64
         cmp     rdx, 64
-        jae     .loop
+        jae     .loop64
 .tail:
         test    edx, edx
         jz      .done
@@ -408,6 +509,13 @@ brotli_asm_encoder_create:
         mov     r14, rdx
         mov     r15, rcx
         mov     rbx, r8
+        test    r12, r12
+        jz      .options_valid
+        cmp     dword [r12+OPT_QUALITY], 11
+        ja      .invalid_option
+        cmp     dword [r12+OPT_MODE], 2
+        ja      .invalid_option
+.options_valid:
         mov     eax, 1
         call    create_wrapper
         test    rax, rax
@@ -433,6 +541,13 @@ brotli_asm_encoder_create:
         jmp     .done
 .success:
         mov     rax, r12
+        jmp     .done
+.invalid_option:
+        test    rbx, rbx
+        jz      .invalid_no_store
+        mov     dword [rbx], ERR_OPTION
+.invalid_no_store:
+        xor     eax, eax
 .done:
         lea     rsp, [rbp-40]
         pop     r15

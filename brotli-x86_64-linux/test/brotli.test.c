@@ -6,12 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef DEBUG_SIGNAL
-#include <execinfo.h>
-#include <signal.h>
-#include <ucontext.h>
-#include <unistd.h>
-#endif
 
 typedef int (*reference_compress_fn)(int, int, int, size_t, const uint8_t *,
                                      size_t *, uint8_t *);
@@ -22,20 +16,6 @@ static void fail(const char *message) {
   fprintf(stderr, "FAIL: %s\n", message);
   exit(1);
 }
-
-#ifdef DEBUG_SIGNAL
-static void debug_signal(int signal_number, siginfo_t *information,
-                         void *context_pointer) {
-  (void)information;
-  ucontext_t *context = context_pointer;
-  dprintf(STDERR_FILENO, "signal %d rip=%llx\n", signal_number,
-          (unsigned long long)context->uc_mcontext.gregs[REG_RIP]);
-  void *frames[64];
-  int count = backtrace(frames, 64);
-  backtrace_symbols_fd(frames, count, STDERR_FILENO);
-  _exit(128 + signal_number);
-}
-#endif
 
 static void *allocate(void *opaque, size_t size) {
   (void)opaque;
@@ -139,13 +119,6 @@ static void asm_decompress_chunked(const uint8_t *input, size_t input_size,
 }
 
 int main(void) {
-#ifdef DEBUG_SIGNAL
-  struct sigaction action = {0};
-  action.sa_sigaction = debug_signal;
-  action.sa_flags = SA_SIGINFO;
-  sigaction(SIGILL, &action, NULL);
-  sigaction(SIGSEGV, &action, NULL);
-#endif
   if (brotli_asm_version() != BROTLI_ASM_VERSION) fail("version");
   if (!brotli_asm_cpu_supported()) fail("CPU support detection");
 
@@ -236,6 +209,26 @@ int main(void) {
   if (decoder == NULL || !brotli_asm_decoder_reset(decoder))
     fail("decoder reset");
   brotli_asm_decoder_destroy(decoder);
+
+  brotli_asm_options reset_options = {
+      .quality = 4,
+      .lgwin = 22,
+      .mode = BROTLI_ASM_MODE_GENERIC,
+  };
+  brotli_asm_state *encoder = brotli_asm_encoder_create(
+      &reset_options, allocate, release, NULL, &error);
+  if (encoder == NULL || !brotli_asm_encoder_reset(encoder))
+    fail("encoder reset");
+  brotli_asm_encoder_destroy(encoder);
+
+  reset_options.quality = 12;
+  encoder = brotli_asm_encoder_create(&reset_options, allocate, release, NULL,
+                                      &error);
+  if (encoder != NULL || error != BROTLI_ASM_ERR_OPTION)
+    fail("invalid encoder option");
+  if (brotli_asm_decoder_create(NULL, NULL, release, NULL, &error) != NULL ||
+      error != BROTLI_ASM_ERR_BAD_ARGUMENT)
+    fail("invalid allocator pair");
 
   free(reference_output);
   free(decoded);
