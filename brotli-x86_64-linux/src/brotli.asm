@@ -92,6 +92,64 @@ brotli_asm_cpu_supported:
         pop     rbx
         ret
 
+; Long-prefix continuation used by the encoder hash chains. Callers have
+; already proved the first eight bytes equal, so 64-byte comparisons are
+; profitable here without bloating their immediate-mismatch paths.
+; rdi=s1, rsi=s2, rdx=limit; returns the equal prefix length in rax.
+BrotliFindMatchLengthAVX512:
+        xor     eax, eax
+.chunks:
+        cmp     rdx, 64
+        jb      .words
+        vmovdqu8 zmm0, [rdi]
+        vpcmpeqb k1, zmm0, [rsi]
+        kmovq   rcx, k1
+        cmp     rcx, -1
+        jne     .chunk_mismatch
+        add     rdi, 64
+        add     rsi, 64
+        add     rax, 64
+        sub     rdx, 64
+        jmp     .chunks
+.chunk_mismatch:
+        not     rcx
+        tzcnt   rcx, rcx
+        add     rax, rcx
+        vzeroupper
+        ret
+.words:
+        cmp     rdx, 8
+        jb      .bytes
+        mov     rcx, [rdi]
+        xor     rcx, [rsi]
+        jnz     .word_mismatch
+        add     rdi, 8
+        add     rsi, 8
+        add     rax, 8
+        sub     rdx, 8
+        jmp     .words
+.word_mismatch:
+        tzcnt   rcx, rcx
+        shr     rcx, 3
+        add     rax, rcx
+        vzeroupper
+        ret
+.bytes:
+        test    rdx, rdx
+        jz      .done
+.byte_loop:
+        movzx   ecx, byte [rdi]
+        cmp     cl, [rsi]
+        jne     .done
+        inc     rdi
+        inc     rsi
+        inc     rax
+        dec     rdx
+        jnz     .byte_loop
+.done:
+        vzeroupper
+        ret
+
 ; Internal freestanding runtime.  The codec is always given explicit
 ; allocator callbacks, so the default allocation entry points fail closed.
 %ifdef BROTLI_EXTERNAL_RUNTIME
@@ -117,6 +175,8 @@ exit:
 
 memcpy:
         mov     rax, rdi
+        cmp     rdx, 2048
+        jae     .erms
         cmp     rdx, 16
         ja      .over16
         cmp     edx, 8
@@ -205,6 +265,10 @@ memcpy:
 .done:
         vzeroupper
         ret
+.erms:
+        mov     rcx, rdx
+        rep movsb
+        ret
 
 memmove:
         mov     rax, rdi
@@ -235,6 +299,8 @@ memmove:
 
 memset:
         mov     r8, rdi
+        cmp     rdx, 2048
+        jae     .erms
         movzx   eax, sil
         mov     rcx, 0101010101010101H
         imul    rax, rcx
@@ -318,18 +384,107 @@ memset:
         vzeroupper
         mov     rax, r8
         ret
+.erms:
+        mov     eax, esi
+        mov     rcx, rdx
+        rep stosb
+        mov     rax, r8
+        ret
 
 log2:
-        sub     rsp, 16
-        vmovsd  [rsp], xmm0
-        fld1
-        fld     qword [rsp]
-        fyl2x
-        fstp    qword [rsp+8]
-        vmovsd  xmm0, [rsp+8]
-        add     rsp, 16
+        ; Encoder cost models only call this with positive, exactly
+        ; representable integers. Reduce x = 2**e * m, m in [1, 2), and
+        ; evaluate log2(m) through the rapidly converging atanh series:
+        ;   2/ln(2) * (y + y^3/3 + ...), y = (m - 1) / (m + 1).
+        ; Seven FMA terms bound the approximation error below 1.5e-9 while
+        ; avoiding the high-latency x87 FYL2X instruction.
+        vgetexpsd xmm1, xmm0, xmm0
+        vgetmantsd xmm2, xmm0, xmm0, 0
+        vmovsd  xmm3, [rel brotli_log2_one]
+        vsubsd  xmm4, xmm2, xmm3
+        vaddsd  xmm2, xmm2, xmm3
+        vdivsd  xmm4, xmm4, xmm2
+        vmulsd  xmm3, xmm4, xmm4
+        vmovsd  xmm2, [rel brotli_log2_c15]
+        vfmadd213sd xmm2, xmm3, [rel brotli_log2_c13]
+        vfmadd213sd xmm2, xmm3, [rel brotli_log2_c11]
+        vfmadd213sd xmm2, xmm3, [rel brotli_log2_c9]
+        vfmadd213sd xmm2, xmm3, [rel brotli_log2_c7]
+        vfmadd213sd xmm2, xmm3, [rel brotli_log2_c5]
+        vfmadd213sd xmm2, xmm3, [rel brotli_log2_c3]
+        vfmadd213sd xmm2, xmm3, [rel brotli_log2_one]
+        vmulsd  xmm2, xmm2, xmm4
+        vmovsd  xmm5, [rel brotli_log2_two_over_ln2]
+        vfmadd213sd xmm2, xmm5, xmm1
+        vmovapd xmm0, xmm2
         ret
+
+section .rodata align=64
+brotli_log2_one:          dq 03FF0000000000000H
+brotli_log2_two_over_ln2: dq 040071547652B82FEH
+brotli_log2_c3:           dq 03FD5555555555555H
+brotli_log2_c5:           dq 03FC999999999999AH
+brotli_log2_c7:           dq 03FC2492492492492H
+brotli_log2_c9:           dq 03FBC71C71C71C71CH
+brotli_log2_c11:          dq 03FB745D1745D1746H
+brotli_log2_c13:          dq 03FB3B13B13B13B14H
+brotli_log2_c15:          dq 03FB1111111111111H
+section .text align=64
 %endif
+
+; Fast path for the q10/q11 UTF-8 heuristic. Pure nonzero ASCII is the common
+; text case; prove it 64 bytes at a time, then retain upstream's scalar parser
+; for wrapping input, NULs, high bytes, and genuine multibyte UTF-8.
+; rdi=data, rsi=pos, rdx=mask, rcx=length, xmm0=min_fraction.
+BrotliIsMostlyUTF8:
+        cmp     rcx, 64
+        jb      .scalar
+        mov     r8, rsi
+        and     r8, rdx
+        lea     r9, [rdx+1]
+        mov     r10, r8
+        add     r10, rcx
+        jc      .scalar
+        cmp     r10, r9
+        ja      .scalar
+        lea     r11, [rdi+r8]
+        mov     rax, rcx
+        vpxord  zmm31, zmm31, zmm31
+.chunks:
+        cmp     rax, 64
+        jb      .tail
+        vmovdqu8 zmm30, [r11]
+        vpcmpb  k1, zmm30, zmm31, 6
+        kmovq   r10, k1
+        cmp     r10, -1
+        jne     .scalar_vector
+        add     r11, 64
+        sub     rax, 64
+        jmp     .chunks
+.tail:
+        test    rax, rax
+        jz      .ascii
+.tail_loop:
+        movzx   r10d, byte [r11]
+        test    r10b, r10b
+        jz      .scalar_vector
+        test    r10b, 80H
+        jnz     .scalar_vector
+        inc     r11
+        dec     rax
+        jnz     .tail_loop
+.ascii:
+        vcvtsi2sd xmm1, xmm1, rcx
+        vmulsd  xmm0, xmm0, xmm1
+        vcomisd xmm1, xmm0
+        seta    al
+        movzx   eax, al
+        vzeroupper
+        ret
+.scalar_vector:
+        vzeroupper
+.scalar:
+        jmp     BrotliIsMostlyUTF8Scalar
 
 ; rdi = wrapper. Returns eax=1 and stores a new encoder core, or eax=0.
 encoder_init_core:

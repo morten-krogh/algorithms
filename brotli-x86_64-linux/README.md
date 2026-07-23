@@ -102,25 +102,38 @@ make bench
 bin/bench
 bin/bench --check
 bin/bench --target
+bin/bench --quality=11 --corpus=text
 ```
 
 The benchmark uses the same streaming create/process/destroy lifecycle and
 the same compressed stream for this implementation and the installed Google
 Brotli 1.2.0 reference. It verifies compressed sizes and reports encode and
-decode MiB/s at q0, q4, q6, and q11. `--check` is the release regression gate:
-each bulk q0/q4/q6 direction must retain at least 0.90x native throughput and
-aggregate decoding at least 0.95x. `--target` retains the optimization goal:
-q0/q4/q6 encoding and aggregate decoding must beat native by 5%, with no
-individual decoder below 0.95x. q11 is reported separately because it is
-intentionally much more expensive and measurement-sensitive.
+decode MiB/s at q0, q4, q6, and q11. `--quality=0..11` selects one reported
+quality, while `--corpus=mixed|text|binary` selects the deterministic input.
+`--check` is the release regression gate: each bulk q0/q4/q6 direction must
+retain at least 0.90x native throughput and aggregate decoding at least 0.95x.
+`--target` retains the optimization goal: q0/q4/q6 encoding and aggregate
+decoding must beat native by 5%, with no individual decoder below 0.95x. q11
+is reported separately because it is much more expensive and
+measurement-sensitive.
 
 On the AMD EPYC 9575F development host, sustained mixed-corpus throughput is
 generally within a few percent of the distribution's native Brotli 1.2.0
-library. O3 auto-vectorization was explicitly rejected after it slowed the
-branch-heavy q4 decoder; the checked-in decoder preserves symbolic branch
-labels and uses the faster measured O2 schedule. The handwritten runtime uses
-exact-width scalar/SSE copies for small lengths and AVX-512 for bulk
-copy/fill/move operations.
+library. Repetitive-text encoding is about 1.5x native at q4, 2x at q6, and
+slightly faster at q11; incompressible q4 remains the limiting case at about
+0.90x. These figures are workload- and host-dependent.
+
+The encoder confirms 16 bytes scalarly before entering an out-of-line
+AVX-512 prefix matcher, keeping hash misses compact while comparing long
+matches 64 bytes at a time. Its q11 cost model replaces x87 `fyl2x` with
+AVX-512 exponent/mantissa reduction and a seven-FMA polynomial whose maximum
+sampled error is below 1.5e-9. A separate 64-byte ASCII classifier accelerates
+the q10/q11 UTF-8 heuristic and falls back exactly for wrapping or non-ASCII
+input. The handwritten runtime uses exact-width scalar/SSE operations for
+small copies, AVX-512 for medium copies, and ERMS for copy/fill operations of
+at least 2 KiB. Whole-program O3/vector scheduling and several broader
+decoder rewrites were measured and rejected; the checked-in decoder retains
+the faster O2 symbolic control flow.
 
 ## Regeneration and provenance
 
@@ -136,8 +149,10 @@ python3 tools/generate-upstream-asm.py \
 
 The generator verifies the exact upstream commit, gives translation-unit-local
 symbols unique names, preserves the decoder's symbolic control-flow labels,
-and writes one deterministic include. Experimental GCC scheduling targets can
-be selected with its documented command-line flags; release changes should be
-accepted only after `make test` and the benchmark agree.
+applies the long-prefix helper from `tools/avx512-find-match-length.h`, and
+writes one deterministic include. `--no-avx512-match-length` reproduces the
+scalar upstream prefix matcher. Experimental GCC scheduling targets can be
+selected with the generator's documented command-line flags; release changes
+should be accepted only after `make test` and the benchmark agree.
 
 See `THIRD_PARTY_NOTICES.md` for the upstream MIT license and attribution.

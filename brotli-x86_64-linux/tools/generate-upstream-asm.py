@@ -22,6 +22,12 @@ from pathlib import Path
 
 EXPECTED_COMMIT = "028fb5a23661f123017c060daa546b55cf4bde29"
 LOCAL_TOKEN = re.compile(r"[A-Za-z0-9_.$?]")
+MATCH_LENGTH_SOURCES = {
+    Path("enc/backward_references.c"),
+    Path("enc/backward_references_hq.c"),
+    Path("enc/compress_fragment.c"),
+    Path("enc/compress_fragment_two_pass.c"),
+}
 
 
 def run(*arguments: str, cwd: Path | None = None) -> str:
@@ -243,6 +249,8 @@ def gcc_asm_to_nasm(text: str, tag: str) -> str:
         line = raw_line.strip()
         if not line:
             continue
+        if line.startswith("#"):
+            continue
         if line == ".text":
             skipping_note = False
             output.append("SECTION .text progbits alloc exec nowrite align=16")
@@ -416,6 +424,47 @@ def main() -> None:
         type=Path,
         help="consume GCC profile data whose files are named after source tags",
     )
+    parser.add_argument(
+        "--hot-source",
+        action="append",
+        default=[],
+        help="c/-relative source to compile with the hot-source target flags",
+    )
+    parser.add_argument(
+        "--hot-optimization",
+        default="-O3",
+        choices=("-O2", "-O3"),
+        help="optimization level for --hot-source units (default: -O3)",
+    )
+    parser.add_argument(
+        "--hot-march",
+        default="x86-64-v4",
+        help="instruction target for --hot-source units (default: x86-64-v4)",
+    )
+    parser.add_argument(
+        "--hot-mtune",
+        default="znver5",
+        help="scheduling target for --hot-source units (default: znver5)",
+    )
+    parser.add_argument(
+        "--hot-extra-flag",
+        action="append",
+        default=[],
+        help="additional GCC flag for --hot-source units",
+    )
+    parser.add_argument(
+        "--avx512-match-length",
+        type=Path,
+        default=Path(__file__).with_name("avx512-find-match-length.h"),
+        help="matching-prefix override header (defaults to the AVX-512 helper)",
+    )
+    parser.add_argument(
+        "--no-avx512-match-length",
+        action="store_const",
+        const=None,
+        dest="avx512_match_length",
+        help="regenerate with upstream's scalar matching-prefix helper",
+    )
     args = parser.parse_args()
 
     upstream = args.upstream.resolve()
@@ -444,28 +493,48 @@ def main() -> None:
             tag = safe_tag(relative)
             obj = build / f"{tag}.o"
             asm = build / f"{tag}.asm"
+            is_hot_source = str(relative) in args.hot_source
+            optimization = (
+                args.hot_optimization if is_hot_source else args.optimization
+            )
+            march = args.hot_march if is_hot_source else args.march
+            mtune = args.hot_mtune if is_hot_source else args.mtune
             compiler_arguments = [
                 "gcc",
                 "-I",
                 str(upstream / "c/include"),
                 "-I",
                 str(upstream),
-                args.optimization,
+                optimization,
                 "-DNDEBUG",
-                f"-march={args.march}",
-                f"-mtune={args.mtune}",
+                f"-march={march}",
+                f"-mtune={mtune}",
                 "-fno-semantic-interposition",
                 "-fno-stack-protector",
                 "-fno-asynchronous-unwind-tables",
                 "-fno-unwind-tables",
                 "-fno-pic",
             ]
+            if is_hot_source:
+                compiler_arguments += args.hot_extra_flag
             if args.profile_dir is not None:
                 compiler_arguments += [
                     f"-fprofile-use={args.profile_dir.resolve()}",
                     "-fprofile-correction",
                 ]
-            if args.symbolic_all or relative == Path("dec/decode.c"):
+            if (
+                args.avx512_match_length is not None
+                and relative in MATCH_LENGTH_SOURCES
+            ):
+                compiler_arguments += [
+                    "-include",
+                    str(args.avx512_match_length.resolve()),
+                ]
+            if (
+                args.symbolic_all
+                or is_hot_source
+                or relative == Path("dec/decode.c")
+            ):
                 run(
                     *compiler_arguments,
                     "-S",
@@ -475,7 +544,14 @@ def main() -> None:
                     str(asm),
                 )
                 chunks.append(f"; ---- c/{relative} (GCC symbolic NASM) ----")
-                chunks.append(gcc_asm_to_nasm(asm.read_text(), tag))
+                generated = gcc_asm_to_nasm(asm.read_text(), tag)
+                if relative == Path("enc/utf8_util.c"):
+                    generated = replace_symbol(
+                        generated,
+                        "BrotliIsMostlyUTF8",
+                        "BrotliIsMostlyUTF8Scalar",
+                    )
+                chunks.append(generated)
                 continue
             run(
                 *compiler_arguments,
@@ -486,7 +562,14 @@ def main() -> None:
             )
             run(str(objconv), "-fnasm", str(obj), str(asm))
             chunks.append(f"; ---- c/{relative} ----")
-            chunks.append(clean_objconv(asm.read_text(), obj, tag))
+            generated = clean_objconv(asm.read_text(), obj, tag)
+            if relative == Path("enc/utf8_util.c"):
+                generated = replace_symbol(
+                    generated,
+                    "BrotliIsMostlyUTF8",
+                    "BrotliIsMostlyUTF8Scalar",
+                )
+            chunks.append(generated)
 
         output.parent.mkdir(parents=True, exist_ok=True)
         temporary_output = output.with_suffix(output.suffix + ".tmp")

@@ -173,12 +173,30 @@ static double mib_per_second(size_t bytes, unsigned iterations, double time) {
 }
 
 int main(int argc, char **argv) {
-  int enforce = argc == 2 && strcmp(argv[1], "--check") == 0;
-  int target = argc == 2 && strcmp(argv[1], "--target") == 0;
-  if (argc > 2 || (argc == 2 && !enforce && !target)) {
-    fprintf(stderr, "Usage: %s [--check|--target]\n", argv[0]);
-    return 2;
+  int enforce = 0;
+  int target = 0;
+  int quality_filter = -1;
+  const char *corpus = "mixed";
+  for (int argument = 1; argument < argc; ++argument) {
+    if (strcmp(argv[argument], "--check") == 0) {
+      enforce = 1;
+    } else if (strcmp(argv[argument], "--target") == 0) {
+      target = 1;
+    } else if (strncmp(argv[argument], "--quality=", 10) == 0) {
+      char *end = NULL;
+      long value = strtol(argv[argument] + 10, &end, 10);
+      if (*end != '\0' || value < 0 || value > 11) goto usage;
+      quality_filter = (int)value;
+    } else if (strncmp(argv[argument], "--corpus=", 9) == 0) {
+      corpus = argv[argument] + 9;
+      if (strcmp(corpus, "mixed") != 0 && strcmp(corpus, "text") != 0 &&
+          strcmp(corpus, "binary") != 0)
+        goto usage;
+    } else {
+      goto usage;
+    }
   }
+  if (enforce && target) goto usage;
   if (!brotli_asm_cpu_supported()) {
     fputs("required CPU features are unavailable\n", stderr);
     return 1;
@@ -237,8 +255,14 @@ int main(int argc, char **argv) {
     random ^= random << 13;
     random ^= random >> 17;
     random ^= random << 5;
-    input[i] = (i % 113 < 101) ? (uint8_t)text[i % (sizeof(text) - 1)]
-                               : (uint8_t)random;
+    if (strcmp(corpus, "text") == 0) {
+      input[i] = (uint8_t)text[i % (sizeof(text) - 1)];
+    } else if (strcmp(corpus, "binary") == 0) {
+      input[i] = (uint8_t)random;
+    } else {
+      input[i] = (i % 113 < 101) ? (uint8_t)text[i % (sizeof(text) - 1)]
+                                 : (uint8_t)random;
+    }
   }
 
   context ctx = {
@@ -256,17 +280,25 @@ int main(int argc, char **argv) {
       .reference_decoder_process = reference_decoder_process,
       .reference_decoder_destroy = reference_decoder_destroy,
   };
-  const unsigned qualities[] = {0, 4, 6, 11};
-  const unsigned iterations[] = {12, 5, 3, 1};
+  unsigned qualities[] = {0, 4, 6, 11};
+  unsigned iterations[] = {12, 5, 3, 1};
+  size_t quality_count = sizeof(qualities) / sizeof(qualities[0]);
+  if (quality_filter >= 0) {
+    qualities[0] = (unsigned)quality_filter;
+    iterations[0] = quality_filter == 0 ? 12 :
+                    quality_filter <= 4 ? 5 :
+                    quality_filter <= 6 ? 3 : 1;
+    quality_count = 1;
+  }
   double decode_asm_time = 0.0;
   double decode_reference_time = 0.0;
   int check_failed = 0;
 
-  puts("dataset: 2.00 MiB mixed text/binary; streaming lifecycle on both");
+  printf("dataset: 2.00 MiB %s; streaming lifecycle on both\n", corpus);
   puts("sizes are asm/reference bytes");
   puts(" q   size asm/ref      encode MiB/s (asm ref ratio)"
        "      decode MiB/s (asm ref ratio)");
-  for (size_t row = 0; row < sizeof(qualities) / sizeof(qualities[0]); ++row) {
+  for (size_t row = 0; row < quality_count; ++row) {
     ctx.quality = qualities[row];
     if (!asm_encode(&ctx)) return 1;
     size_t asm_size = ctx.compressed_size;
@@ -313,9 +345,12 @@ int main(int argc, char **argv) {
         check_failed = 1;
     }
   }
-  double aggregate_decode_ratio = decode_reference_time / decode_asm_time;
-  printf("aggregate q0/q4/q6 decode ratio: %.2fx\n", aggregate_decode_ratio);
-  if (aggregate_decode_ratio < (target ? 1.05 : 0.95)) check_failed = 1;
+  if (quality_filter < 0) {
+    double aggregate_decode_ratio = decode_reference_time / decode_asm_time;
+    printf("aggregate q0/q4/q6 decode ratio: %.2fx\n",
+           aggregate_decode_ratio);
+    if (aggregate_decode_ratio < (target ? 1.05 : 0.95)) check_failed = 1;
+  }
   printf("checksum: %llu\n", (unsigned long long)checksum);
 
   free(decoded);
@@ -330,4 +365,11 @@ int main(int argc, char **argv) {
     return 1;
   }
   return 0;
+
+usage:
+  fprintf(stderr,
+          "Usage: %s [--check|--target] [--quality=0..11] "
+          "[--corpus=mixed|text|binary]\n",
+          argv[0]);
+  return 2;
 }
